@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Analytics - Rodo Stats</h5>
+                </div>
+                <div class="card-body">
+                    {% if vehicles %}
+                    <div class="row">
+                        {% for vehicle in vehicles %}
+                        <div class="col-md-6 mb-4">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">{{ vehicle.name }}</h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if analytics_data[vehicle.name] %}
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Consumo Médio</small>
+                                            <h5 class="text-primary">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.average_consumption) }} km/L</h5>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Tendência</small>
+                                            <h6 class="
+                                                {% if analytics_data[vehicle.name].efficiency.trend == 'improving' %}text-success
+                                                {% elif analytics_data[vehicle.name].efficiency.trend == 'worsening' %}text-danger
+                                                {% else %}text-warning{% endif %}
+                                            ">
+                                                {% if analytics_data[vehicle.name].efficiency.trend == 'improving' %}
+                                                    <i class="fas fa-arrow-up"></i> Melhorando
+                                                {% elif analytics_data[vehicle.name].efficiency.trend == 'worsening' %}
+                                                    <i class="fas fa-arrow-down"></i> Piorando
+                                                {% else %}
+                                                    <i class="fas fa-minus"></i> Estável
+                                                {% endif %}
+                                            </h6>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    
+                                    <div class="row">
+                                        <div class="col-6">
+                                            <small class="text-muted">Melhor</small>
+                                            <p class="text-success mb-1">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.best_consumption) }} km/L</p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-muted">Pior</small>
+                                            <p class="text-warning mb-1">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.worst_consumption) }} km/L</p>
+                                        </div>
+                                    </div>
+
+                                    {% if analytics_data[vehicle.name].consumption %}
+                                    <div class="mt-3">
+                                        <small class="text-muted">Consumo ao longo do tempo:</small>
+                                        <div class="chart-placeholder bg-light p-3 text-center">
+                                            <small>{{ analytics_data[vehicle.name].consumption|length }} registros de consumo</small>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+
+                                    {% else %}
+                                    <div class="text-center py-3">
+                                        <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
+                                        <p class="text-muted">Dados insuficientes para análise</p>
+                                        <small>Adicione mais abastecimentos para ver os analytics</small>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> Dicas para Melhorar o Consumo</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="tip-item mb-3">
+                                                <i class="fas fa-tachometer-alt text-primary"></i>
+                                                <strong> Velocidade Constante</strong>
+                                                <p class="small text-muted">Mantenha velocidade entre 60-80 km/h</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="tip-item mb-3">
+                                                <i class="fas fa-wrench text-success"></i>
+                                                <strong> Manutenção</strong>
+                                                <p class="small text-muted">Mantenha o carro sempre revisado</p>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="tip-item mb-3">
+                                                <i class="fas fa-tire text-warning"></i>
+                                                <strong> Pneus</strong>
+                                                <p class="small text-muted">Verifique a pressão regularmente</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum veículo cadastrado</h5>
+                        <p class="text-muted">Adicione um veículo para começar a ver os analytics</p>
+                        <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Adicionar Veículo
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

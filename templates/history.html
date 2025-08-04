@@ -1,0 +1,453 @@
+{% extends "base.html" %}
+
+{% block title %}Histórico de Abastecimentos - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="gradient-text">
+                <i class="fas fa-history me-2"></i>Histórico de Abastecimentos
+            </h1>
+            <p class="text-muted">Visualize e edite todos os seus registros</p>
+        </div>
+        <a href="{{ url_for('add_fuel') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Novo Abastecimento
+        </a>
+    </div>
+</div>
+
+<!-- Filtros (mesmos do dashboard) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-filter me-2"></i>Filtros
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="vehicle_id" class="form-label">Veículo</label>
+                        <select class="form-select" id="vehicle_id" name="vehicle_id">
+                            <option value="">Todos os veículos</option>
+                            {% for vehicle in vehicles %}
+                                <option value="{{ vehicle.id }}" 
+                                        {% if selected_vehicle == vehicle.id %}selected{% endif %}>
+                                    {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="days" class="form-label">Período</label>
+                        <select class="form-select" id="days" name="days">
+                            <option value="">Todos os dados</option>
+                            <option value="7" {% if selected_days == 7 %}selected{% endif %}>Últimos 7 dias</option>
+                            <option value="30" {% if selected_days == 30 %}selected{% endif %}>Últimos 30 dias</option>
+                            <option value="365" {% if selected_days == 365 %}selected{% endif %}>Último ano</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>Filtrar
+                        </button>
+                        <a href="{{ url_for('history') }}" class="btn btn-outline-light me-2">
+                            <i class="fas fa-times me-1"></i>Limpar
+                        </a>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-light dropdown-toggle" type="button" 
+                                    data-bs-toggle="dropdown">
+                                <i class="fas fa-download me-1"></i>Exportar
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{{ url_for('export_csv', vehicle_id=selected_vehicle, days=selected_days) }}">
+                                        <i class="fas fa-file-csv me-2"></i>Exportar CSV
+                                    </a>
+                                </li>
+                                <li>
+                                    <a class="dropdown-item" 
+                                       href="{{ url_for('export_pdf', vehicle_id=selected_vehicle, days=selected_days) }}">
+                                        <i class="fas fa-file-pdf me-2"></i>Exportar PDF
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabela de registros -->
+{% if records %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>
+                    <i class="fas fa-list me-2"></i>
+                    {{ records | length }} registros encontrados
+                </span>
+                <small class="text-muted">
+                    Clique na quilometragem para editar
+                </small>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Data/Hora</th>
+                                <th>Veículo</th>
+                                <th>Combustível</th>
+                                <th>Litros</th>
+                                <th>Valor Total</th>
+                                <th>Preço/Litro</th>
+                                <th>Quilometragem</th>
+                                <th>Posto</th>
+                                <th>Tanque</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in records %}
+                            <tr id="record-{{ record.id }}">
+                                <td>
+                                    <div>{{ record.fuel_date.strftime('%d/%m/%Y') }}</div>
+                                    <small class="text-muted">{{ record.fuel_date.strftime('%H:%M') }}</small>
+                                </td>
+                                <td>
+                                    {% for vehicle in vehicles %}
+                                        {% if vehicle.id == record.vehicle_id %}
+                                            <div>{{ vehicle.brand }} {{ vehicle.model }}</div>
+                                            <small class="text-muted">{{ vehicle.license_plate }}</small>
+                                        {% endif %}
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <span class="badge {% if record.fuel_type == 'Gasolina Comum' %}bg-danger{% elif record.fuel_type == 'Etanol' %}bg-success{% else %}bg-secondary{% endif %}">
+                                        {{ record.fuel_type }}
+                                    </span>
+                                </td>
+                                <td>{{ "%.2f"|format(record.liters) }}L</td>
+                                <td>
+                                    <strong>R$ {{ "%.2f"|format(record.total_cost) }}</strong>
+                                </td>
+                                <td>R$ {{ "%.3f"|format(record.total_cost / record.liters) }}</td>
+                                <td>
+                                    <div class="odometer-cell" data-record-id="{{ record.id }}">
+                                        {% if record.odometer %}
+                                            <span class="odometer-display">{{ record.odometer }} km</span>
+                                            <input type="number" class="form-control form-control-sm odometer-input" 
+                                                   value="{{ record.odometer }}" style="display: none;" min="0">
+                                        {% else %}
+                                            <span class="odometer-display text-muted">-</span>
+                                            <input type="number" class="form-control form-control-sm odometer-input" 
+                                                   placeholder="KM" style="display: none;" min="0">
+                                        {% endif %}
+                                        <div class="odometer-actions mt-1" style="display: none;">
+                                            <button class="btn btn-success btn-sm me-1 save-odometer">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm cancel-odometer">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% if record.gas_station %}
+                                        {{ record.gas_station }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.full_tank %}
+                                        <i class="fas fa-check-circle text-success" title="Tanque cheio"></i>
+                                    {% else %}
+                                        <i class="fas fa-circle text-muted" title="Tanque parcial"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-light edit-odometer" title="Editar KM">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-outline-danger" title="Excluir" 
+                                                onclick="deleteRecord({{ record.id }})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <strong>{{ records | length }}</strong>
+                        <div class="text-muted">Registros</div>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>R$ {{ "%.2f"|format(records | sum(attribute='total_cost')) }}</strong>
+                        <div class="text-muted">Total Gasto</div>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>{{ "%.1f"|format(records | sum(attribute='liters')) }}L</strong>
+                        <div class="text-muted">Total Litros</div>
+                    </div>
+                    <div class="col-md-3">
+                        {% set avg_price = (records | sum(attribute='total_cost')) / (records | sum(attribute='liters')) if records | sum(attribute='liters') > 0 else 0 %}
+                        <strong>R$ {{ "%.3f"|format(avg_price) }}</strong>
+                        <div class="text-muted">Preço Médio/L</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Estado vazio -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-gas-pump fa-5x text-muted mb-4"></i>
+                <h3 class="text-muted mb-3">Nenhum abastecimento encontrado</h3>
+                <p class="text-muted mb-4">
+                    {% if selected_vehicle or selected_days %}
+                        Não há registros para os filtros selecionados. 
+                        Tente ajustar os filtros ou adicionar novos abastecimentos.
+                    {% else %}
+                        Você ainda não registrou nenhum abastecimento. 
+                        Comece adicionando seu primeiro registro!
+                    {% endif %}
+                </p>
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="{{ url_for('add_fuel') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-2"></i>Adicionar Abastecimento
+                    </a>
+                    {% if selected_vehicle or selected_days %}
+                        <a href="{{ url_for('history') }}" class="btn btn-outline-light btn-lg">
+                            <i class="fas fa-times me-2"></i>Limpar Filtros
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Edição inline de quilometragem
+document.addEventListener('DOMContentLoaded', function() {
+    // Event listeners para editar quilometragem
+    document.querySelectorAll('.edit-odometer').forEach(button => {
+        button.addEventListener('click', function() {
+            const cell = this.closest('tr').querySelector('.odometer-cell');
+            editOdometer(cell);
+        });
+    });
+    
+    // Clique direto na célula para editar
+    document.querySelectorAll('.odometer-display').forEach(display => {
+        display.addEventListener('click', function() {
+            const cell = this.closest('.odometer-cell');
+            editOdometer(cell);
+        });
+        display.style.cursor = 'pointer';
+        display.title = 'Clique para editar';
+    });
+});
+
+function editOdometer(cell) {
+    const display = cell.querySelector('.odometer-display');
+    const input = cell.querySelector('.odometer-input');
+    const actions = cell.querySelector('.odometer-actions');
+    const editButton = cell.closest('tr').querySelector('.edit-odometer');
+    
+    display.style.display = 'none';
+    input.style.display = 'block';
+    actions.style.display = 'block';
+    editButton.style.display = 'none';
+    
+    input.focus();
+    
+    // Event listeners para salvar/cancelar
+    const saveBtn = cell.querySelector('.save-odometer');
+    const cancelBtn = cell.querySelector('.cancel-odometer');
+    
+    saveBtn.onclick = () => saveOdometer(cell);
+    cancelBtn.onclick = () => cancelEditOdometer(cell);
+    
+    // Salvar com Enter
+    input.onkeypress = (e) => {
+        if (e.key === 'Enter') saveOdometer(cell);
+        if (e.key === 'Escape') cancelEditOdometer(cell);
+    };
+}
+
+function saveOdometer(cell) {
+    const recordId = cell.dataset.recordId;
+    const input = cell.querySelector('.odometer-input');
+    const newValue = input.value.trim();
+    
+    // Mostrar loading
+    const saveBtn = cell.querySelector('.save-odometer');
+    const originalHtml = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<span class="spinner"></span>';
+    saveBtn.disabled = true;
+    
+    // Enviar para servidor
+    fetch('/update_odometer', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            record_id: recordId,
+            odometer: newValue === '' ? null : parseInt(newValue)
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Atualizar display
+            const display = cell.querySelector('.odometer-display');
+            if (newValue) {
+                display.innerHTML = newValue + ' km';
+                display.className = 'odometer-display';
+            } else {
+                display.innerHTML = '-';
+                display.className = 'odometer-display text-muted';
+            }
+            
+            // Mostrar sucesso temporário
+            saveBtn.innerHTML = '<i class="fas fa-check text-success"></i>';
+            setTimeout(() => {
+                cancelEditOdometer(cell);
+            }, 1000);
+        } else {
+            alert('Erro ao salvar: ' + (data.error || 'Erro desconhecido'));
+            saveBtn.innerHTML = originalHtml;
+            saveBtn.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro na comunicação com o servidor!');
+        saveBtn.innerHTML = originalHtml;
+        saveBtn.disabled = false;
+    });
+}
+
+function cancelEditOdometer(cell) {
+    const display = cell.querySelector('.odometer-display');
+    const input = cell.querySelector('.odometer-input');
+    const actions = cell.querySelector('.odometer-actions');
+    const editButton = cell.closest('tr').querySelector('.edit-odometer');
+    
+    display.style.display = 'block';
+    input.style.display = 'none';
+    actions.style.display = 'none';
+    editButton.style.display = 'block';
+    
+    // Reset input to original value
+    const originalValue = display.textContent.replace(' km', '').replace('-', '');
+    input.value = originalValue === '-' ? '' : originalValue;
+}
+
+function deleteRecord(recordId) {
+    if (confirm('Tem certeza que deseja excluir este abastecimento?')) {
+        // Implementar exclusão (adicionar rota no backend)
+        alert('Funcionalidade de exclusão será implementada em breve!');
+    }
+}
+
+// Auto-save quando sair do input
+document.querySelectorAll('.odometer-input').forEach(input => {
+    input.addEventListener('blur', function() {
+        const cell = this.closest('.odometer-cell');
+        const actions = cell.querySelector('.odometer-actions');
+        if (actions.style.display !== 'none') {
+            setTimeout(() => {
+                if (document.activeElement !== cell.querySelector('.save-odometer') &&
+                    document.activeElement !== cell.querySelector('.cancel-odometer')) {
+                    cancelEditOdometer(cell);
+                }
+            }, 100);
+        }
+    });
+});
+
+// Highlight da linha editada
+let currentEditingRow = null;
+
+function highlightEditingRow(cell) {
+    // Remove highlight anterior
+    if (currentEditingRow) {
+        currentEditingRow.classList.remove('table-warning');
+    }
+    
+    // Adiciona highlight atual
+    currentEditingRow = cell.closest('tr');
+    currentEditingRow.classList.add('table-warning');
+}
+
+// Adicionar highlight quando começar a editar
+const originalEditOdometer = editOdometer;
+editOdometer = function(cell) {
+    originalEditOdometer(cell);
+    highlightEditingRow(cell);
+};
+
+const originalCancelEditOdometer = cancelEditOdometer;
+cancelEditOdometer = function(cell) {
+    originalCancelEditOdometer(cell);
+    if (currentEditingRow) {
+        currentEditingRow.classList.remove('table-warning');
+        currentEditingRow = null;
+    }
+};
+</script>
+
+<style>
+.odometer-cell {
+    min-width: 120px;
+}
+
+.odometer-input {
+    width: 80px;
+}
+
+.table-warning {
+    background-color: rgba(255, 193, 7, 0.1) !important;
+    border-color: rgba(255, 193, 7, 0.3) !important;
+}
+
+.btn-group-sm .btn {
+    padding: 0.25rem 0.5rem;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.odometer-display:hover {
+    background-color: rgba(74, 144, 226, 0.1);
+    border-radius: 3px;
+    padding: 2px 4px;
+}
+</style>
+{% endblock %}

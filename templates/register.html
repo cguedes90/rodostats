@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastro - Rodo Stats{% endblock %}
+
+{% block content %}
+<div class="min-vh-100 d-flex align-items-center">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6 col-lg-4">
+                <div class="card">
+                    <div class="card-header text-center">
+                        <i class="fas fa-user-plus fa-2x mb-2"></i>
+                        <h4>Criar Conta</h4>
+                        <p class="text-muted mb-0">Comece a controlar seu combustível</p>
+                    </div>
+                    <div class="card-body">
+                        <form method="POST" id="registerForm">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="username" name="username" 
+                                       placeholder="Seu nome de usuário" required>
+                                <label for="username">Nome de Usuário</label>
+                            </div>
+                            
+                            <div class="floating-label mb-3">
+                                <input type="email" class="form-control" id="email" name="email" 
+                                       placeholder="Seu email" required>
+                                <label for="email">Email</label>
+                            </div>
+                            
+                            <div class="floating-label mb-3">
+                                <input type="password" class="form-control" id="password" name="password" 
+                                       placeholder="Crie uma senha" required minlength="6">
+                                <label for="password">Senha</label>
+                                <div class="form-text">Mínimo 6 caracteres</div>
+                            </div>
+                            
+                            <div class="floating-label mb-3">
+                                <input type="password" class="form-control" id="confirm_password" name="confirm_password"
+                                       placeholder="Confirme sua senha" required>
+                                <label for="confirm_password">Confirmar Senha</label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="termsAccept" required>
+                                <label class="form-check-label" for="termsAccept">
+                                    Concordo com os <a href="#" class="text-primary">Termos de Uso</a> 
+                                    e <a href="#" class="text-primary">Política de Privacidade</a>
+                                </label>
+                            </div>
+                            
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">
+                                    <i class="fas fa-user-plus me-2"></i>Criar Conta
+                                </button>
+                            </div>
+                        </form>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="text-center">
+                            <p class="text-muted mb-3">Já tem conta?</p>
+                            <a href="{{ url_for('login') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-sign-in-alt me-2"></i>Faça Login
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('index') }}" class="text-muted">
+                        <i class="fas fa-arrow-left me-1"></i>Voltar ao início
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Features Overview -->
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <h5 class="text-center gradient-text mb-4">O que você terá acesso:</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <div class="card glass-effect h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-robot fa-2x text-info mb-2"></i>
+                            <h6>Processamento IA</h6>
+                            <small>Recibos automáticos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card glass-effect h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-chart-bar fa-2x text-success mb-2"></i>
+                            <h6>Analytics</h6>
+                            <small>Relatórios detalhados</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card glass-effect h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-car fa-2x text-primary mb-2"></i>
+                            <h6>Multi-Veículos</h6>
+                            <small>Ilimitados</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card glass-effect h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-mobile-alt fa-2x text-warning mb-2"></i>
+                            <h6>App PWA</h6>
+                            <small>Mobile nativo</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form validation
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    const termsAccept = document.getElementById('termsAccept').checked;
+    
+    // Check all fields
+    if (!username || !email || !password || !confirmPassword) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos!');
+        return false;
+    }
+    
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        e.preventDefault();
+        alert('Por favor, insira um email válido!');
+        return false;
+    }
+    
+    // Password validation
+    if (password.length < 6) {
+        e.preventDefault();
+        alert('A senha deve ter pelo menos 6 caracteres!');
+        return false;
+    }
+    
+    // Password confirmation
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('As senhas não coincidem!');
+        return false;
+    }
+    
+    // Terms acceptance
+    if (!termsAccept) {
+        e.preventDefault();
+        alert('Você deve aceitar os termos de uso!');
+        return false;
+    }
+    
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Criando conta...';
+    submitBtn.disabled = true;
+    
+    // Reset on error (this would be handled by the server response)
+    setTimeout(() => {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }, 5000);
+});
+
+// Password strength indicator
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const strength = calculatePasswordStrength(password);
+    
+    // Remove existing strength indicator
+    const existingIndicator = document.querySelector('.password-strength');
+    if (existingIndicator) {
+        existingIndicator.remove();
+    }
+    
+    // Add new strength indicator
+    if (password.length > 0) {
+        const indicator = document.createElement('div');
+        indicator.className = 'password-strength mt-1';
+        indicator.innerHTML = `
+            <small class="text-${strength.color}">
+                <i class="fas fa-${strength.icon} me-1"></i>${strength.text}
+            </small>
+        `;
+        this.parentNode.appendChild(indicator);
+    }
+});
+
+function calculatePasswordStrength(password) {
+    let score = 0;
+    
+    if (password.length >= 6) score++;
+    if (password.length >= 8) score++;
+    if (/[a-z]/.test(password)) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    
+    if (score < 3) {
+        return { color: 'danger', icon: 'exclamation-triangle', text: 'Fraca' };
+    } else if (score < 5) {
+        return { color: 'warning', icon: 'shield-alt', text: 'Média' };
+    } else {
+        return { color: 'success', icon: 'check-circle', text: 'Forte' };
+    }
+}
+
+// Real-time password confirmation
+document.getElementById('confirm_password').addEventListener('input', function() {
+    const password = document.getElementById('password').value;
+    const confirmPassword = this.value;
+    
+    if (confirmPassword.length > 0) {
+        if (password === confirmPassword) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
+    } else {
+        this.classList.remove('is-valid', 'is-invalid');
+    }
+});
+
+// Auto-focus on first input
+window.addEventListener('load', function() {
+    document.getElementById('username').focus();
+});
+</script>
+{% endblock %}

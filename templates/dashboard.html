@@ -1,0 +1,401 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="gradient-text">
+            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+        </h1>
+        <p class="text-muted">Visão geral do seu controle de combustível</p>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-filter me-2"></i>Filtros
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="vehicle_id" class="form-label">Veículo</label>
+                        <select class="form-select" id="vehicle_id" name="vehicle_id">
+                            <option value="">Todos os veículos</option>
+                            {% for vehicle in vehicles %}
+                                <option value="{{ vehicle.id }}" 
+                                        {% if selected_vehicle == vehicle.id %}selected{% endif %}>
+                                    {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="days" class="form-label">Período</label>
+                        <select class="form-select" id="days" name="days">
+                            <option value="">Todos os dados</option>
+                            <option value="7" {% if selected_days == 7 %}selected{% endif %}>Últimos 7 dias</option>
+                            <option value="30" {% if selected_days == 30 %}selected{% endif %}>Últimos 30 dias</option>
+                            <option value="365" {% if selected_days == 365 %}selected{% endif %}>Último ano</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search me-1"></i>Filtrar
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">
+                            <i class="fas fa-times me-1"></i>Limpar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas de Gastos -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value">R$ {{ "%.2f"|format(total_spent) }}</div>
+                <div class="metric-label">Total Gasto</div>
+                <i class="fas fa-money-bill-wave fa-2x text-success mt-2"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value">{{ "%.1f"|format(total_liters) }}L</div>
+                <div class="metric-label">Total Litros</div>
+                <i class="fas fa-gas-pump fa-2x text-primary mt-2"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value">R$ {{ "%.3f"|format(avg_price) }}</div>
+                <div class="metric-label">Preço Médio/L</div>
+                <i class="fas fa-calculator fa-2x text-warning mt-2"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card">
+            <div class="card-body text-center">
+                <div class="metric-value text-truncate" style="font-size: 1.2rem;">{{ favorite_station }}</div>
+                <div class="metric-label">Posto Favorito</div>
+                <i class="fas fa-star fa-2x text-info mt-2"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Métricas de Quilometragem e Consumo -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-road me-2"></i>Análise de Quilometragem e Consumo
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card glass-effect">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-info">{{ consumption_metrics.total_km }}</div>
+                                <div class="metric-label">Total KM Rodados</div>
+                                <i class="fas fa-route fa-2x text-info mt-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card glass-effect">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-success">{{ consumption_metrics.average_consumption }} km/L</div>
+                                <div class="metric-label">Consumo Médio</div>
+                                <i class="fas fa-leaf fa-2x text-success mt-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card glass-effect">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-primary">{{ consumption_metrics.best_consumption }} km/L</div>
+                                <div class="metric-label">Melhor Rendimento</div>
+                                <i class="fas fa-trophy fa-2x text-primary mt-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3 col-md-6 mb-3">
+                        <div class="card glass-effect">
+                            <div class="card-body text-center">
+                                <div class="metric-value text-warning">{{ consumption_metrics.km_last_30_days }}</div>
+                                <div class="metric-label">KM Últimos 30 dias</div>
+                                <i class="fas fa-calendar-day fa-2x text-warning mt-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-bar me-2"></i>Gastos Mensais
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-3">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-pie me-2"></i>Distribuição de Combustível
+            </div>
+            <div class="card-body">
+                <canvas id="fuelChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Últimos Abastecimentos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-list me-2"></i>Últimos Abastecimentos</span>
+                <div>
+                    <a href="{{ url_for('export_csv', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                       class="btn btn-outline-light btn-sm me-2">
+                        <i class="fas fa-file-csv me-1"></i>CSV
+                    </a>
+                    <a href="{{ url_for('export_pdf', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                       class="btn btn-outline-light btn-sm me-2">
+                        <i class="fas fa-file-pdf me-1"></i>PDF
+                    </a>
+                    <a href="{{ url_for('history', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                       class="btn btn-primary btn-sm">
+                        <i class="fas fa-eye me-1"></i>Ver Todos
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                {% if records %}
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Veículo</th>
+                                    <th>Combustível</th>
+                                    <th>Litros</th>
+                                    <th>Valor</th>
+                                    <th>Preço/L</th>
+                                    <th>KM</th>
+                                    <th>Posto</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records[:10] %}
+                                <tr>
+                                    <td>{{ record.fuel_date.strftime('%d/%m/%Y') }}</td>
+                                    <td>
+                                        {% for vehicle in vehicles %}
+                                            {% if vehicle.id == record.vehicle_id %}
+                                                {{ vehicle.brand }} {{ vehicle.model }}
+                                                <br><small class="text-muted">{{ vehicle.license_plate }}</small>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if record.fuel_type == 'Gasolina Comum' %}bg-danger{% elif record.fuel_type == 'Etanol' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ record.fuel_type }}
+                                        </span>
+                                    </td>
+                                    <td>{{ "%.2f"|format(record.liters) }}L</td>
+                                    <td>R$ {{ "%.2f"|format(record.total_cost) }}</td>
+                                    <td>R$ {{ "%.3f"|format(record.total_cost / record.liters) }}</td>
+                                    <td>
+                                        {% if record.odometer %}
+                                            {{ record.odometer }} km
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if record.gas_station %}
+                                            {{ record.gas_station }}
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-gas-pump fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum abastecimento encontrado</h5>
+                        <p class="text-muted">Comece registrando seu primeiro abastecimento!</p>
+                        <a href="{{ url_for('add_fuel') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Adicionar Abastecimento
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1000;">
+    <a href="{{ url_for('add_fuel') }}" class="btn btn-primary rounded-circle" style="width: 60px; height: 60px;">
+        <i class="fas fa-plus fa-lg"></i>
+    </a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Dados dos gráficos
+const monthlyData = {{ monthly_data | tojson }};
+const fuelDistribution = {{ fuel_distribution | tojson }};
+
+// Gráfico de gastos mensais
+const monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
+const monthlyChart = new Chart(monthlyCtx, {
+    type: 'bar',
+    data: {
+        labels: Object.keys(monthlyData).sort(),
+        datasets: [{
+            label: 'Gastos (R$)',
+            data: Object.keys(monthlyData).sort().map(key => monthlyData[key]),
+            backgroundColor: 'linear-gradient(135deg, #4A90E2, #28C997)',
+            borderColor: '#4A90E2',
+            borderWidth: 1,
+            borderRadius: 5
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                labels: {
+                    color: '#e0e0e0'
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    color: '#e0e0e0',
+                    callback: function(value) {
+                        return 'R$ ' + value.toFixed(2);
+                    }
+                },
+                grid: {
+                    color: '#404040'
+                }
+            },
+            x: {
+                ticks: {
+                    color: '#e0e0e0'
+                },
+                grid: {
+                    color: '#404040'
+                }
+            }
+        }
+    }
+});
+
+// Gráfico de distribuição de combustível
+const fuelCtx = document.getElementById('fuelChart').getContext('2d');
+const fuelChart = new Chart(fuelCtx, {
+    type: 'doughnut',
+    data: {
+        labels: Object.keys(fuelDistribution),
+        datasets: [{
+            data: Object.values(fuelDistribution),
+            backgroundColor: [
+                '#dc3545',  // Gasolina - Vermelho
+                '#28a745',  // Etanol - Verde
+                '#6c757d'   // Diesel - Cinza
+            ],
+            borderColor: '#2d2d2d',
+            borderWidth: 2
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: '#e0e0e0',
+                    padding: 20
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return context.label + ': ' + context.parsed.toFixed(1) + 'L';
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Atualizar gráficos quando filtros mudarem
+document.getElementById('vehicle_id').addEventListener('change', function() {
+    updateCharts();
+});
+
+document.getElementById('days').addEventListener('change', function() {
+    updateCharts();
+});
+
+function updateCharts() {
+    const vehicleId = document.getElementById('vehicle_id').value;
+    const days = document.getElementById('days').value;
+    
+    // Fetch dados atualizados
+    const params = new URLSearchParams();
+    if (vehicleId) params.append('vehicle_id', vehicleId);
+    if (days) params.append('days', days);
+    
+    fetch('/api/monthly_data?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            monthlyChart.data.labels = Object.keys(data).sort();
+            monthlyChart.data.datasets[0].data = Object.keys(data).sort().map(key => data[key]);
+            monthlyChart.update();
+        });
+    
+    fetch('/api/fuel_distribution?' + params.toString())
+        .then(response => response.json())
+        .then(data => {
+            fuelChart.data.labels = Object.keys(data);
+            fuelChart.data.datasets[0].data = Object.values(data);
+            fuelChart.update();
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+
+{% block title %}Meus Veículos - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="gradient-text">
+                <i class="fas fa-car me-2"></i>Meus Veículos
+            </h1>
+            <p class="text-muted">Gerencie sua frota de veículos</p>
+        </div>
+        <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary">
+            <i class="fas fa-plus me-2"></i>Adicionar Veículo
+        </a>
+    </div>
+</div>
+
+{% if vehicles %}
+<div class="row">
+    {% for vehicle in vehicles %}
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card vehicle-card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-car me-2 text-primary"></i>
+                    {{ vehicle.brand }} {{ vehicle.model }}
+                </h5>
+                <span class="badge bg-primary">{{ vehicle.year }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <small class="text-muted">Placa</small>
+                        <p class="fw-bold">{{ vehicle.license_plate }}</p>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Cor</small>
+                        <p class="fw-bold">{{ vehicle.color }}</p>
+                    </div>
+                </div>
+                
+                <!-- Estatísticas do veículo -->
+                {% set vehicle_stats = vehicle.fuel_records %}
+                {% if vehicle_stats %}
+                <div class="border-top pt-3 mt-3">
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="metric-value text-primary" style="font-size: 1.2rem;">
+                                {{ vehicle_stats | length }}
+                            </div>
+                            <div class="metric-label">Abastecimentos</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value text-success" style="font-size: 1.2rem;">
+                                R$ {{ "%.0f"|format(vehicle_stats | sum(attribute='total_cost')) }}
+                            </div>
+                            <div class="metric-label">Total Gasto</div>
+                        </div>
+                        <div class="col-4">
+                            <div class="metric-value text-info" style="font-size: 1.2rem;">
+                                {{ "%.0f"|format(vehicle_stats | sum(attribute='liters')) }}L
+                            </div>
+                            <div class="metric-label">Total Litros</div>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="border-top pt-3 mt-3 text-center">
+                    <p class="text-muted mb-0">
+                        <i class="fas fa-gas-pump me-1"></i>
+                        Nenhum abastecimento registrado
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{{ url_for('dashboard', vehicle_id=vehicle.id) }}" 
+                       class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="fas fa-chart-bar me-1"></i>Ver Dados
+                    </a>
+                    <a href="{{ url_for('add_fuel') }}?vehicle={{ vehicle.id }}" 
+                       class="btn btn-success btn-sm flex-fill">
+                        <i class="fas fa-plus me-1"></i>Abastecer
+                    </a>
+                </div>
+                <small class="text-muted d-block mt-2 text-center">
+                    Cadastrado em {{ vehicle.created_at.strftime('%d/%m/%Y') }}
+                </small>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Resumo geral -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-chart-pie me-2"></i>Resumo da Frota
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <div class="metric-value text-primary">{{ vehicles | length }}</div>
+                        <div class="metric-label">Veículos Cadastrados</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-value text-success">
+                            {% set total_records = vehicles | sum(attribute='fuel_records') | length %}
+                            {{ total_records }}
+                        </div>
+                        <div class="metric-label">Total de Abastecimentos</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-value text-info">
+                            {% set total_spent = 0 %}
+                            {% for vehicle in vehicles %}
+                                {% set total_spent = total_spent + (vehicle.fuel_records | sum(attribute='total_cost')) %}
+                            {% endfor %}
+                            R$ {{ "%.0f"|format(total_spent) }}
+                        </div>
+                        <div class="metric-label">Gasto Total</div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="metric-value text-warning">
+                            {% set total_liters = 0 %}
+                            {% for vehicle in vehicles %}
+                                {% set total_liters = total_liters + (vehicle.fuel_records | sum(attribute='liters')) %}
+                            {% endfor %}
+                            {{ "%.0f"|format(total_liters) }}L
+                        </div>
+                        <div class="metric-label">Litros Totais</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Estado vazio -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-car fa-5x text-muted mb-4"></i>
+                <h3 class="text-muted mb-3">Nenhum veículo cadastrado</h3>
+                <p class="text-muted mb-4">
+                    Comece cadastrando seu primeiro veículo para começar a controlar 
+                    seus gastos com combustível.
+                </p>
+                <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-plus me-2"></i>Cadastrar Primeiro Veículo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Animação das cards de veículos
+document.addEventListener('DOMContentLoaded', function() {
+    const vehicleCards = document.querySelectorAll('.vehicle-card');
+    
+    vehicleCards.forEach((card, index) => {
+        card.style.opacity = '0';
+        card.style.transform = 'translateY(20px)';
+        
+        setTimeout(() => {
+            card.style.transition = 'all 0.5s ease';
+            card.style.opacity = '1';
+            card.style.transform = 'translateY(0)';
+        }, index * 100);
+    });
+});
+</script>
+
+<style>
+.vehicle-card {
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+}
+
+.vehicle-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 30px rgba(74, 144, 226, 0.2);
+    border-color: var(--primary-color);
+}
+
+.vehicle-card .card-header {
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.1), rgba(40, 201, 151, 0.1));
+    border-bottom: 1px solid var(--border-color);
+}
+</style>
+{% endblock %}

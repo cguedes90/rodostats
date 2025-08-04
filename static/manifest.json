@@ -1,0 +1,35 @@
+{
+  "name": "Rodo Stats - Controle Inteligente de Combustível",
+  "short_name": "Rodo Stats",
+  "description": "Aplicativo para controle inteligente de combustível com IA integrada",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#2D3748",
+  "theme_color": "#4A90E2",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "categories": ["productivity", "utilities"],
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
+}

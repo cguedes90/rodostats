@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-cog"></i> Configurações</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Nome de Usuário</label>
+                                    <input type="text" class="form-control" id="username" name="username" 
+                                           value="{{ current_user.username }}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" name="email" 
+                                           value="{{ current_user.email }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <h6><i class="fas fa-lock"></i> Alterar Senha</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="current_password" class="form-label">Senha Atual</label>
+                                    <input type="password" class="form-control" id="current_password" name="current_password">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="new_password" class="form-label">Nova Senha</label>
+                                    <input type="password" class="form-control" id="new_password" name="new_password">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="confirm_new_password" class="form-label">Confirmar Nova Senha</label>
+                            <input type="password" class="form-control" id="confirm_new_password" name="confirm_new_password">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Salvar Alterações
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-download"></i> Exportar Dados</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">Baixe todos os seus dados em formato CSV</p>
+                    <a href="{{ url_for('export_data') }}" class="btn btn-outline-primary btn-sm">
+                        <i class="fas fa-file-csv"></i> Baixar CSV
+                    </a>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0"><i class="fas fa-info-circle"></i> Sobre o App</h6>
+                </div>
+                <div class="card-body">
+                    <h6>Rodo Stats</h6>
+                    <p class="small text-muted">
+                        Aplicativo para controle inteligente de combustível com IA integrada.
+                    </p>
+                    <p class="small">
+                        <strong>Recursos:</strong><br>
+                        • Gestão de múltiplos veículos<br>
+                        • Analytics avançados<br>
+                        • IA para extrair dados de notas<br>
+                        • PWA para dispositivos móveis
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0 text-danger"><i class="fas fa-exclamation-triangle"></i> Zona de Perigo</h6>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted">
+                        Esta ação removerá permanentemente sua conta e todos os dados associados.
+                    </p>
+                    <button class="btn btn-outline-danger btn-sm" data-bs-toggle="modal" data-bs-target="#deleteAccountModal">
+                        <i class="fas fa-trash"></i> Excluir Conta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmação -->
+<div class="modal fade" id="deleteAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">Excluir Conta</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir sua conta permanentemente?</p>
+                <p class="text-danger"><strong>Esta ação não pode ser desfeita!</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger">Sim, excluir conta</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

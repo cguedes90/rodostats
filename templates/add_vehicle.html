@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+
+{% block title %}Cadastrar Veículo - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <i class="fas fa-car fa-2x mb-2"></i>
+                <h4>Cadastrar Novo Veículo</h4>
+                <p class="text-muted mb-0">Adicione um veículo à sua frota</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="vehicleForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="brand" name="brand" 
+                                       placeholder="Ex: Toyota" required>
+                                <label for="brand">Marca *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="model" name="model" 
+                                       placeholder="Ex: Corolla" required>
+                                <label for="model">Modelo *</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="year" name="year" 
+                                       min="1980" max="2030" placeholder="2023" required>
+                                <label for="year">Ano *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="license_plate" name="license_plate" 
+                                       placeholder="ABC-1234" required maxlength="8" style="text-transform: uppercase;">
+                                <label for="license_plate">Placa *</label>
+                                <div class="form-text">Formato: ABC-1234 ou ABC1D23</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Cor *</label>
+                        <select class="form-select" id="color" name="color" required>
+                            <option value="">Selecione a cor</option>
+                            <option value="Branco">Branco</option>
+                            <option value="Preto">Preto</option>
+                            <option value="Prata">Prata</option>
+                            <option value="Cinza">Cinza</option>
+                            <option value="Vermelho">Vermelho</option>
+                            <option value="Azul">Azul</option>
+                            <option value="Verde">Verde</option>
+                            <option value="Amarelo">Amarelo</option>
+                            <option value="Marrom">Marrom</option>
+                            <option value="Bege">Bege</option>
+                            <option value="Dourado">Dourado</option>
+                            <option value="Outro">Outro</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Preview do veículo -->
+                    <div class="card glass-effect mb-3" id="vehiclePreview" style="display: none;">
+                        <div class="card-body">
+                            <h6 class="gradient-text mb-3">
+                                <i class="fas fa-eye me-2"></i>Preview do Veículo
+                            </h6>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-car fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-1" id="previewTitle">-</h6>
+                                    <small class="text-muted">
+                                        <span id="previewPlate">-</span> • <span id="previewColor">-</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Cadastrar Veículo
+                        </button>
+                        <a href="{{ url_for('vehicles') }}" class="btn btn-outline-light">
+                            <i class="fas fa-arrow-left me-2"></i>Voltar aos Veículos
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Dicas -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="gradient-text mb-3">
+                    <i class="fas fa-lightbulb me-2"></i>Dicas Importantes
+                </h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        Você pode cadastrar quantos veículos quiser
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-id-card text-info me-2"></i>
+                        A placa deve seguir o formato brasileiro (ABC-1234 ou ABC1D23)
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-chart-bar text-warning me-2"></i>
+                        Cada veículo terá seus dados de consumo separados
+                    </li>
+                    <li>
+                        <i class="fas fa-edit text-primary me-2"></i>
+                        Você poderá editar essas informações depois
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Validação de placa brasileira
+function validateLicensePlate(plate) {
+    // Remove hífens e espaços
+    const cleanPlate = plate.replace(/[-\s]/g, '').toUpperCase();
+    
+    // Formato antigo: ABC1234
+    const oldFormat = /^[A-Z]{3}\d{4}$/.test(cleanPlate);
+    
+    // Formato Mercosul: ABC1D23
+    const mercosulFormat = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(cleanPlate);
+    
+    return oldFormat || mercosulFormat;
+}
+
+// Formatação automática da placa
+document.getElementById('license_plate').addEventListener('input', function() {
+    let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    // Aplica formatação com hífen se for formato antigo
+    if (value.length >= 4 && /^[A-Z]{3}\d/.test(value)) {
+        if (value.length <= 7) {
+            value = value.substring(0, 3) + '-' + value.substring(3);
+        }
+    }
+    
+    this.value = value;
+    
+    // Validação visual
+    if (value.length >= 7) {
+        const isValid = validateLicensePlate(value);
+        if (isValid) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
+    } else {
+        this.classList.remove('is-valid', 'is-invalid');
+    }
+    
+    updatePreview();
+});
+
+// Atualizar preview do veículo
+function updatePreview() {
+    const brand = document.getElementById('brand').value;
+    const model = document.getElementById('model').value;
+    const year = document.getElementById('year').value;
+    const plate = document.getElementById('license_plate').value;
+    const color = document.getElementById('color').value;
+    
+    if (brand || model || year || plate || color) {
+        document.getElementById('vehiclePreview').style.display = 'block';
+        
+        const title = `${brand} ${model} ${year}`.trim() || 'Seu Veículo';
+        const plateText = plate || '-';
+        const colorText = color || '-';
+        
+        document.getElementById('previewTitle').textContent = title;
+        document.getElementById('previewPlate').textContent = plateText;
+        document.getElementById('previewColor').textContent = colorText;
+    } else {
+        document.getElementById('vehiclePreview').style.display = 'none';
+    }
+}
+
+// Event listeners para atualizar preview
+['brand', 'model', 'year', 'license_plate', 'color'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+// Validação do formulário
+document.getElementById('vehicleForm').addEventListener('submit', function(e) {
+    const brand = document.getElementById('brand').value;
+    const model = document.getElementById('model').value;
+    const year = document.getElementById('year').value;
+    const plate = document.getElementById('license_plate').value;
+    const color = document.getElementById('color').value;
+    
+    // Verificar campos obrigatórios
+    if (!brand || !model || !year || !plate || !color) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios!');
+        return false;
+    }
+    
+    // Validar placa
+    if (!validateLicensePlate(plate)) {
+        e.preventDefault();
+        alert('Formato de placa inválido! Use ABC-1234 ou ABC1D23');
+        return false;
+    }
+    
+    // Validar ano
+    const currentYear = new Date().getFullYear();
+    if (year < 1980 || year > currentYear + 1) {
+        e.preventDefault();
+        alert('Ano deve estar entre 1980 e ' + (currentYear + 1));
+        return false;
+    }
+    
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner"></span> Cadastrando...';
+    submitBtn.disabled = true;
+});
+
+// Lista de marcas populares para autocomplete
+const popularBrands = [
+    'Chevrolet', 'Volkswagen', 'Fiat', 'Ford', 'Hyundai',
+    'Toyota', 'Honda', 'Nissan', 'Renault', 'Peugeot',
+    'Citroën', 'Jeep', 'BMW', 'Mercedes-Benz', 'Audi'
+];
+
+// Implementar autocomplete simples
+document.getElementById('brand').addEventListener('input', function() {
+    const value = this.value.toLowerCase();
+    if (value.length >= 2) {
+        const suggestions = popularBrands.filter(brand => 
+            brand.toLowerCase().includes(value)
+        );
+        
+        // Remover lista existente
+        const existingList = document.getElementById('brandSuggestions');
+        if (existingList) {
+            existingList.remove();
+        }
+        
+        // Criar nova lista se houver sugestões
+        if (suggestions.length > 0 && suggestions.length < 5) {
+            const list = document.createElement('div');
+            list.id = 'brandSuggestions';
+            list.className = 'list-group position-absolute';
+            list.style.zIndex = '1000';
+            list.style.width = '100%';
+            
+            suggestions.forEach(brand => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'list-group-item list-group-item-action';
+                item.textContent = brand;
+                item.onclick = () => {
+                    this.value = brand;
+                    list.remove();
+                    updatePreview();
+                };
+                list.appendChild(item);
+            });
+            
+            this.parentNode.style.position = 'relative';
+            this.parentNode.appendChild(list);
+        }
+    }
+});
+
+// Auto-focus no primeiro campo
+window.addEventListener('load', function() {
+    document.getElementById('brand').focus();
+});
+</script>
+{% endblock %}

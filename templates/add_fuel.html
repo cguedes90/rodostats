@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block title %}Adicionar Abastecimento - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="gradient-text">
+            <i class="fas fa-plus me-2"></i>Adicionar Abastecimento
+        </h1>
+        <p class="text-muted">Registre manualmente ou processe um recibo automaticamente</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Registro Manual -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-edit me-2"></i>Registro Manual
+            </div>
+            <div class="card-body">
+                <form method="POST" id="manualForm">
+                    <div class="mb-3">
+                        <label for="vehicle_id" class="form-label">Veículo *</label>
+                        <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                            <option value="">Selecione um veículo</option>
+                            {% for vehicle in vehicles %}
+                                <option value="{{ vehicle.id }}">
+                                    {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="liters" name="liters" 
+                                       step="0.01" min="0" placeholder="0.00" required>
+                                <label for="liters">Litros *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="total_cost" name="total_cost" 
+                                       step="0.01" min="0" placeholder="0.00" required>
+                                <label for="total_cost">Valor Total (R$) *</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="fuel_type" class="form-label">Tipo de Combustível *</label>
+                        <select class="form-select" id="fuel_type" name="fuel_type" required>
+                            <option value="">Selecione o combustível</option>
+                            <option value="Gasolina Comum">Gasolina Comum</option>
+                            <option value="Etanol">Etanol</option>
+                            <option value="Diesel">Diesel</option>
+                        </select>
+                    </div>
+                    
+                    <div class="floating-label mb-3">
+                        <input type="number" class="form-control" id="odometer" name="odometer" 
+                               min="0" placeholder="Quilometragem atual">
+                        <label for="odometer">Quilometragem (km)</label>
+                    </div>
+                    
+                    <div class="floating-label mb-3">
+                        <input type="text" class="form-control" id="gas_station" name="gas_station" 
+                               placeholder="Nome do posto">
+                        <label for="gas_station">Posto de Gasolina</label>
+                    </div>
+                    
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="full_tank" name="full_tank" checked>
+                        <label class="form-check-label" for="full_tank">
+                            Tanque cheio
+                        </label>
+                    </div>
+                    
+                    <!-- Cálculo automático -->
+                    <div class="alert alert-info" id="priceCalculation" style="display: none;">
+                        <i class="fas fa-calculator me-2"></i>
+                        <strong>Preço por litro:</strong> <span id="pricePerLiter">R$ 0,000</span>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Abastecimento
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Processamento Automático -->
+    <div class="col-lg-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-robot me-2"></i>Processamento Automático com IA
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <i class="fas fa-camera fa-3x text-primary mb-3"></i>
+                    <h5>Processe recibos automaticamente</h5>
+                    <p class="text-muted">Tire uma foto do recibo e nossa IA extrairá os dados automaticamente</p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="receipt_image" class="form-label">Foto do Recibo</label>
+                    <input type="file" class="form-control" id="receipt_image" 
+                           accept="image/*" capture="environment">
+                    <div class="form-text">
+                        Formatos suportados: JPG, PNG. Máximo 16MB.
+                    </div>
+                </div>
+                
+                <div id="imagePreview" class="mb-3" style="display: none;">
+                    <img id="previewImg" class="img-fluid rounded" style="max-height: 200px;">
+                </div>
+                
+                <div class="d-grid">
+                    <button type="button" class="btn btn-success" id="processReceipt" disabled>
+                        <i class="fas fa-magic me-2"></i>Processar com IA
+                    </button>
+                </div>
+                
+                <!-- Loading state -->
+                <div id="processingState" class="text-center mt-3" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Processando...</span>
+                    </div>
+                    <p class="text-muted mt-2">Analisando recibo com IA...</p>
+                </div>
+                
+                <!-- Results -->
+                <div id="aiResults" class="mt-3" style="display: none;">
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        <strong>Dados extraídos com sucesso!</strong>
+                        <p class="mb-0">Os campos do formulário foram preenchidos automaticamente. Revise e salve.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features Info -->
+        <div class="card mt-3">
+            <div class="card-body">
+                <h6 class="gradient-text mb-3">
+                    <i class="fas fa-lightbulb me-2"></i>Como funciona a IA
+                </h6>
+                <ul class="list-unstyled">
+                    <li class="mb-2">
+                        <i class="fas fa-eye text-primary me-2"></i>
+                        <strong>OCR Avançado:</strong> Extrai texto da imagem
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-brain text-success me-2"></i>
+                        <strong>Google Gemini:</strong> Interpreta dados brasileiros
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-magic text-info me-2"></i>
+                        <strong>Preenchimento:</strong> Completa formulário automaticamente
+                    </li>
+                    <li>
+                        <i class="fas fa-check text-warning me-2"></i>
+                        <strong>Revisão:</strong> Sempre confira antes de salvar
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Veículos vazio -->
+{% if not vehicles %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum veículo cadastrado</h5>
+                <p class="text-muted">Você precisa cadastrar pelo menos um veículo antes de registrar abastecimentos.</p>
+                <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Cadastrar Veículo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Cálculo automático do preço por litro
+function calculatePricePerLiter() {
+    const liters = parseFloat(document.getElementById('liters').value) || 0;
+    const totalCost = parseFloat(document.getElementById('total_cost').value) || 0;
+    
+    if (liters > 0 && totalCost > 0) {
+        const pricePerLiter = totalCost / liters;
+        document.getElementById('pricePerLiter').textContent = 
+            'R$ ' + pricePerLiter.toFixed(3);
+        document.getElementById('priceCalculation').style.display = 'block';
+    } else {
+        document.getElementById('priceCalculation').style.display = 'none';
+    }
+}
+
+document.getElementById('liters').addEventListener('input', calculatePricePerLiter);
+document.getElementById('total_cost').addEventListener('input', calculatePricePerLiter);
+
+// Preview da imagem
+document.getElementById('receipt_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImg').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+            document.getElementById('processReceipt').disabled = false;
+        };
+        reader.readAsDataURL(file);
+    } else {
+        document.getElementById('imagePreview').style.display = 'none';
+        document.getElementById('processReceipt').disabled = true;
+    }
+});
+
+// Processamento com IA
+document.getElementById('processReceipt').addEventListener('click', function() {
+    const fileInput = document.getElementById('receipt_image');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Por favor, selecione uma imagem!');
+        return;
+    }
+    
+    // Mostrar loading
+    document.getElementById('processingState').style.display = 'block';
+    document.getElementById('aiResults').style.display = 'none';
+    this.disabled = true;
+    
+    // Criar FormData
+    const formData = new FormData();
+    formData.append('receipt_image', file);
+    
+    // Enviar para processamento
+    fetch('/process_receipt', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Esconder loading
+        document.getElementById('processingState').style.display = 'none';
+        this.disabled = false;
+        
+        if (data.error) {
+            alert('Erro no processamento: ' + data.error);
+            return;
+        }
+        
+        // Preencher formulário com dados extraídos
+        if (data.liters) {
+            document.getElementById('liters').value = data.liters;
+        }
+        if (data.total_cost) {
+            document.getElementById('total_cost').value = data.total_cost;
+        }
+        if (data.fuel_type) {
+            document.getElementById('fuel_type').value = data.fuel_type;
+        }
+        if (data.gas_station) {
+            document.getElementById('gas_station').value = data.gas_station;
+        }
+        
+        // Calcular preço por litro
+        calculatePricePerLiter();
+        
+        // Mostrar sucesso
+        document.getElementById('aiResults').style.display = 'block';
+        
+        // Scroll para o formulário
+        document.getElementById('manualForm').scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'start' 
+        });
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        document.getElementById('processingState').style.display = 'none';
+        this.disabled = false;
+        alert('Erro na comunicação com o servidor!');
+    });
+});
+
+// Validação do formulário
+document.getElementById('manualForm').addEventListener('submit', function(e) {
+    const vehicleId = document.getElementById('vehicle_id').value;
+    const liters = document.getElementById('liters').value;
+    const totalCost = document.getElementById('total_cost').value;
+    const fuelType = document.getElementById('fuel_type').value;
+    
+    if (!vehicleId || !liters || !totalCost || !fuelType) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios!');
+        return false;
+    }
+    
+    if (parseFloat(liters) <= 0 || parseFloat(totalCost) <= 0) {
+        e.preventDefault();
+        alert('Litros e valor total devem ser maiores que zero!');
+        return false;
+    }
+    
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner"></span> Salvando...';
+    submitBtn.disabled = true;
+});
+
+// Auto-focus no primeiro campo
+window.addEventListener('load', function() {
+    if (document.getElementById('vehicle_id').options.length > 1) {
+        document.getElementById('vehicle_id').focus();
+    }
+});
+</script>
+{% endblock %}

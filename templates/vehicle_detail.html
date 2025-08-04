@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-car"></i> {{ vehicle.name }}
+                    </h5>
+                    <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus"></i> Novo Abastecimento
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Marca:</strong> {{ vehicle.brand }}</p>
+                            <p><strong>Modelo:</strong> {{ vehicle.model }}</p>
+                            <p><strong>Ano:</strong> {{ vehicle.year }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Placa:</strong> {{ vehicle.license_plate }}</p>
+                            <p><strong>Combustível:</strong> {{ vehicle.fuel_type.title() }}</p>
+                            <p><strong>Tanque:</strong> {{ vehicle.tank_capacity }}L</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-history"></i> Histórico de Abastecimentos</h5>
+                </div>
+                <div class="card-body">
+                    {% if records %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Odômetro</th>
+                                    <th>Litros</th>
+                                    <th>Preço/L</th>
+                                    <th>Total</th>
+                                    <th>Consumo</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for record in records %}
+                                <tr>
+                                    <td>{{ record.date.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ "{:,.0f}".format(record.odometer) }} km</td>
+                                    <td>{{ "{:.2f}".format(record.liters) }}L</td>
+                                    <td>R$ {{ "{:.3f}".format(record.price_per_liter) }}</td>
+                                    <td>R$ {{ "{:.2f}".format(record.total_cost) }}</td>
+                                    <td>
+                                        {% if record.consumption() > 0 %}
+                                            {{ "{:.1f}".format(record.consumption()) }} km/L
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-gas-pump fa-3x text-muted mb-3"></i>
+                        <p class="text-muted">Nenhum abastecimento registrado ainda.</p>
+                        <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Adicionar Primeiro Abastecimento
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line"></i> Estatísticas</h5>
+                </div>
+                <div class="card-body">
+                    <div class="stat-item mb-3">
+                        <h6>Consumo Médio</h6>
+                        <p class="h4 text-primary">{{ "{:.1f}".format(efficiency.average_consumption) }} km/L</p>
+                    </div>
+                    <div class="stat-item mb-3">
+                        <h6>Melhor Consumo</h6>
+                        <p class="h5 text-success">{{ "{:.1f}".format(efficiency.best_consumption) }} km/L</p>
+                    </div>
+                    <div class="stat-item mb-3">
+                        <h6>Pior Consumo</h6>
+                        <p class="h5 text-warning">{{ "{:.1f}".format(efficiency.worst_consumption) }} km/L</p>
+                    </div>
+                    <div class="stat-item">
+                        <h6>Gasto (30 dias)</h6>
+                        <p class="h5 text-info">R$ {{ "{:.2f}".format(recent_expense) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
