@@ -251,9 +251,9 @@ git push -u origin main
 
 3. **Configure as variáveis de ambiente**:
 ```
-DATABASE_URL=postgresql://neondb_owner:npg_ArdO9L4sGxUD@ep-sweet-shape-ac6v4rp3-pooler.sa-east-1.aws.neon.tech/neondb
-GEMINI_API_KEY=AIzaSyC968LxySN21fpYOIOfqJeMCW9Ja5AOmwg
-FLASK_SECRET_KEY=dev-secret-key-change-in-production
+DATABASE_URL=sua_string_de_conexao_postgresql
+GEMINI_API_KEY=sua_chave_da_api_gemini
+FLASK_SECRET_KEY=sua_chave_secreta_flask
 ```
 
 4. **Deploy automático**:

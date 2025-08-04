@@ -1,0 +1,48 @@
+# Arquivos de desenvolvimento
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+.vscode/
+.idea/
+
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Arquivos de backup
+*.bak
+*~
+*.swp
+
+# Arquivos de configuração local
+.env
+.env.local
+
+# Documentação de desenvolvimento
+INSTALACAO.md
+DEPLOYMENT.md
+setup.sh
+setup.bat
+start.sh
+start.bat
+app_backup.py
+app_new.py
+tesseract_config.py
+
+# Uploads locais (manter apenas .gitkeep)
+static/uploads/*
+!static/uploads/.gitkeep
