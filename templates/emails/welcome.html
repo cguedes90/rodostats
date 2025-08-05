@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bem-vindo ao Rodo Stats!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .welcome-message {
+            font-size: 18px;
+            margin-bottom: 25px;
+            color: #2c3e50;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea15, #764ba215);
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        
+        .features {
+            margin: 30px 0;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 10px;
+        }
+        
+        .feature-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .footer .company {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .footer .tagline {
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .social-links {
+            margin: 20px 0;
+        }
+        
+        .social-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .social-links a:hover {
+            opacity: 1;
+        }
+        
+        .copyright {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 5px;
+            }
+            
+            .header, .content, .footer {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚗 Bem-vindo ao Rodo Stats!</h1>
+            <p class="subtitle">Controle Inteligente de Combustível</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <p class="welcome-message">
+                Olá <strong>{{ user_name }}</strong>!
+            </p>
+            
+            <p>
+                É com grande prazer que damos as boas-vindas ao <strong>Rodo Stats</strong>, sua nova ferramenta para controle inteligente de combustível! 🎉
+            </p>
+            
+            <div class="highlight-box">
+                <h3 style="margin-bottom: 15px; color: #667eea;">🎯 Sua conta foi criada com sucesso!</h3>
+                <p><strong>Email:</strong> {{ user_email }}</p>
+                <p><strong>Data de cadastro:</strong> {{ registration_date }}</p>
+            </div>
+            
+            <h3 style="margin: 25px 0 15px 0; color: #2c3e50;">🌟 O que você pode fazer agora:</h3>
+            
+            <div class="features">
+                <div class="feature-item">
+                    <div class="feature-icon">🚙</div>
+                    <div>
+                        <strong>Cadastrar seus veículos</strong><br>
+                        <small>Gerencie múltiplos veículos em uma única plataforma</small>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">⛽</div>
+                    <div>
+                        <strong>Registrar abastecimentos</strong><br>
+                        <small>Manual ou automático com IA do Google Gemini</small>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">📊</div>
+                    <div>
+                        <strong>Analisar seu consumo</strong><br>
+                        <small>Gráficos detalhados e estatísticas avançadas</small>
+                    </div>
+                </div>
+                
+                <div class="feature-item">
+                    <div class="feature-icon">📱</div>
+                    <div>
+                        <strong>Instalar como app</strong><br>
+                        <small>PWA nativo para uso no celular</small>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{{ app_url }}" class="cta-button">
+                    🚀 Começar Agora
+                </a>
+            </div>
+            
+            <p style="margin-top: 30px; color: #7f8c8d;">
+                <strong>Dica:</strong> Adicione o Rodo Stats à tela inicial do seu celular para acesso rápido! Basta abrir no navegador e selecionar "Adicionar à tela inicial".
+            </p>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="company">InovaMente Labs</div>
+            <div class="tagline">Inovação em tecnologia para o seu dia a dia</div>
+            
+            <div class="social-links">
+                <a href="#">GitHub</a> |
+                <a href="#">LinkedIn</a> |
+                <a href="#">Website</a>
+            </div>
+            
+            <div class="copyright">
+                © {{ current_year }} InovaMente Labs. Todos os direitos reservados.<br>
+                Desenvolvido com ❤️ para revolucionar seu controle de combustível.
+            </div>
+        </div>
+    </div>
+</body>
+</html>

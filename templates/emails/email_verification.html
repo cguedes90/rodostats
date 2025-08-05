@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirme seu Email - Rodo Stats</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header .subtitle {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .message {
+            font-size: 18px;
+            margin-bottom: 25px;
+            color: #2c3e50;
+        }
+        
+        .verification-box {
+            background: linear-gradient(135deg, #27ae6015, #22995415);
+            border-left: 4px solid #27ae60;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 5px;
+        }
+        
+        .verification-code {
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            color: #27ae60;
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            letter-spacing: 3px;
+            margin: 15px 0;
+            border: 2px dashed #27ae60;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+        
+        .steps {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 25px 0;
+        }
+        
+        .steps h4 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 15px 0;
+            padding: 10px;
+        }
+        
+        .step-number {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #27ae60, #229954);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        
+        .step-text {
+            flex: 1;
+        }
+        
+        .info-box {
+            background: #e8f5e8;
+            border: 1px solid #27ae60;
+            color: #2c5530;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .footer .company {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .footer .tagline {
+            opacity: 0.8;
+            margin-bottom: 20px;
+        }
+        
+        .social-links {
+            margin: 20px 0;
+        }
+        
+        .social-links a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .social-links a:hover {
+            opacity: 1;
+        }
+        
+        .copyright {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 10px;
+                border-radius: 5px;
+            }
+            
+            .header, .content, .footer {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .verification-code {
+                font-size: 20px;
+                letter-spacing: 2px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>✉️ Confirme seu Email</h1>
+            <p class="subtitle">Rodo Stats - Controle Inteligente de Combustível</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <p class="message">
+                Olá <strong>{{ user_name }}</strong>!
+            </p>
+            
+            <p>
+                Obrigado por se cadastrar no <strong>Rodo Stats</strong>! Estamos muito felizes em tê-lo conosco. Para completar seu cadastro e garantir a segurança da sua conta, precisamos verificar seu endereço de email.
+            </p>
+            
+            <div class="verification-box">
+                <h3 style="margin-bottom: 15px; color: #27ae60;">📧 Verificação de Email</h3>
+                <p><strong>Email cadastrado:</strong> {{ user_email }}</p>
+                <p><strong>Data de cadastro:</strong> {{ registration_date }}</p>
+            </div>
+            
+            <div class="steps">
+                <h4>🎯 Como verificar seu email:</h4>
+                
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-text">
+                        <strong>Use o código de verificação:</strong><br>
+                        Digite o código abaixo na página de verificação:
+                    </div>
+                </div>
+                
+                <div class="verification-code">
+                    {{ verification_code }}
+                </div>
+                
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-text">
+                        <strong>Ou clique no botão abaixo:</strong><br>
+                        Para verificação automática e instantânea:
+                    </div>
+                </div>
+                
+                <div style="text-align: center;">
+                    <a href="{{ verification_url }}" class="cta-button">
+                        ✅ Verificar Email Agora
+                    </a>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>📍 Após a verificação você poderá:</strong><br>
+                • Acessar completamente sua conta<br>
+                • Cadastrar seus veículos<br>
+                • Registrar abastecimentos<br>
+                • Usar a IA para processar notas fiscais<br>
+                • Receber notificações importantes
+            </div>
+            
+            <div class="warning">
+                <strong>⏰ Importante:</strong> Este código de verificação é válido por 24 horas. Após este período, será necessário solicitar um novo código de verificação.
+            </div>
+            
+            <p style="margin-top: 30px; color: #7f8c8d;">
+                <strong>Não consegue verificar?</strong> Verifique sua pasta de spam ou lixo eletrônico. Se ainda assim não conseguir, entre em contato com nosso suporte.
+            </p>
+            
+            <p style="color: #7f8c8d;">
+                <strong>Não foi você?</strong> Se você não se cadastrou no Rodo Stats, pode ignorar este email com segurança.
+            </p>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="company">InovaMente Labs</div>
+            <div class="tagline">Inovação em tecnologia para o seu dia a dia</div>
+            
+            <div class="social-links">
+                <a href="#">GitHub</a> |
+                <a href="#">LinkedIn</a> |
+                <a href="#">Website</a>
+            </div>
+            
+            <div class="copyright">
+                © {{ current_year }} InovaMente Labs. Todos os direitos reservados.<br>
+                Desenvolvido com ❤️ para manter sua conta segura.
+            </div>
+        </div>
+    </div>
+</body>
+</html>
