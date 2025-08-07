@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
+from flask_mail import Mail, Message
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -41,6 +42,16 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 # Banco de dados
 db = SQLAlchemy(app)
 
+# Configuração do Flask-Mail
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
+app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@rodostats.com')
+
+mail = Mail(app)
+
 # Login Manager
 login_manager = LoginManager()
 login_manager.init_app(app)
@@ -52,6 +63,54 @@ if genai:
     gemini_api_key = os.environ.get('GEMINI_API_KEY')
     if gemini_api_key:
         genai.configure(api_key=gemini_api_key)
+
+# === FUNÇÕES DE EMAIL ===
+
+def send_email(to, subject, template, **kwargs):
+    """Envia email usando template HTML"""
+    try:
+        msg = Message(
+            subject,
+            recipients=[to],
+            html=render_template(template, **kwargs),
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+        mail.send(msg)
+        return True
+    except Exception as e:
+        print(f"Erro ao enviar email: {e}")
+        return False
+
+def send_welcome_email(user):
+    """Envia email de boas-vindas"""
+    return send_email(
+        to=user.email,
+        subject="🚗 Bem-vindo ao Rodo Stats!",
+        template="emails/welcome.html",
+        user=user
+    )
+
+def send_password_reset_email(user, reset_token):
+    """Envia email de reset de senha"""
+    reset_url = url_for('reset_password', token=reset_token, _external=True)
+    return send_email(
+        to=user.email,
+        subject="🔑 Reset de Senha - Rodo Stats",
+        template="emails/password_reset.html",
+        user=user,
+        reset_url=reset_url
+    )
+
+def send_email_verification(user, verification_token):
+    """Envia email de verificação"""
+    verification_url = url_for('verify_email', token=verification_token, _external=True)
+    return send_email(
+        to=user.email,
+        subject="✉️ Confirme seu email - Rodo Stats",
+        template="emails/email_verification.html",
+        user=user,
+        verification_url=verification_url
+    )
 
 # === MODELOS ===
 
@@ -324,7 +383,12 @@ def register():
         db.session.add(user)
         db.session.commit()
         
-        flash('Usuario criado com sucesso!', 'success')
+        # Enviar email de boas-vindas
+        if send_welcome_email(user):
+            flash('Usuario criado com sucesso! Verifique seu email.', 'success')
+        else:
+            flash('Usuario criado com sucesso!', 'success')
+        
         return redirect(url_for('login'))
     
     return render_template('register.html')
@@ -335,6 +399,77 @@ def logout():
     """Logout do usuario"""
     logout_user()
     return redirect(url_for('index'))
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    """Solicitar reset de senha"""
+    if request.method == 'POST':
+        email = request.form['email']
+        user = User.query.filter_by(email=email).first()
+        
+        if user:
+            # Gerar token simples (em produção, use algo mais seguro)
+            import secrets
+            reset_token = secrets.token_urlsafe(32)
+            
+            # Armazenar token na sessão temporariamente
+            session[f'reset_token_{user.id}'] = {
+                'token': reset_token,
+                'expires': (datetime.utcnow() + timedelta(hours=1)).isoformat()
+            }
+            
+            if send_password_reset_email(user, reset_token):
+                flash('Email de reset enviado! Verifique sua caixa de entrada.', 'success')
+            else:
+                flash('Erro ao enviar email. Tente novamente.', 'error')
+        else:
+            # Por segurança, sempre mostrar sucesso
+            flash('Se o email existir, você receberá as instruções.', 'info')
+        
+        return redirect(url_for('login'))
+    
+    return render_template('forgot_password.html')
+
+@app.route('/reset_password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    """Reset de senha com token"""
+    # Buscar usuário pelo token na sessão
+    user = None
+    for key, data in list(session.items()):
+        if key.startswith('reset_token_'):
+            if data.get('token') == token:
+                # Verificar se não expirou
+                expires = datetime.fromisoformat(data['expires'])
+                if expires > datetime.utcnow():
+                    user_id = int(key.split('_')[-1])
+                    user = User.query.get(user_id)
+                    break
+                else:
+                    session.pop(key)
+    
+    if not user:
+        flash('Token inválido ou expirado.', 'error')
+        return redirect(url_for('forgot_password'))
+    
+    if request.method == 'POST':
+        password = request.form['password']
+        confirm_password = request.form['confirm_password']
+        
+        if password != confirm_password:
+            flash('Senhas não coincidem.', 'error')
+            return render_template('reset_password.html', token=token)
+        
+        # Atualizar senha
+        user.set_password(password)
+        db.session.commit()
+        
+        # Limpar token
+        session.pop(f'reset_token_{user.id}', None)
+        
+        flash('Senha alterada com sucesso!', 'success')
+        return redirect(url_for('login'))
+    
+    return render_template('reset_password.html', token=token)
 
 @app.route('/dashboard')
 @login_required
