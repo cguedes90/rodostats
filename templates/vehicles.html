@@ -110,7 +110,10 @@
                     </div>
                     <div class="col-md-3">
                         <div class="metric-value text-success">
-                            {% set total_records = vehicles | sum(attribute='fuel_records') | length %}
+                            {% set total_records = 0 %}
+                            {% for vehicle in vehicles %}
+                                {% set total_records = total_records + vehicle.fuel_records | length %}
+                            {% endfor %}
                             {{ total_records }}
                         </div>
                         <div class="metric-label">Total de Abastecimentos</div>
