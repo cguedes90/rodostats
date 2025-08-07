@@ -571,6 +571,64 @@ def dashboard():
         FuelRecord.date >= current_month
     ).scalar() or 0
     
+    # Total gasto (todos os tempos)
+    total_spent = db.session.query(db.func.sum(FuelRecord.total_cost)).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).scalar() or 0
+    
+    # Total de litros
+    total_liters = db.session.query(db.func.sum(FuelRecord.liters)).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).scalar() or 0
+    
+    # Preço médio por litro
+    avg_price = db.session.query(db.func.avg(FuelRecord.price_per_liter)).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).scalar() or 0
+    
+    # Posto favorito (mais frequente)
+    favorite_station_query = db.session.query(
+        FuelRecord.gas_station, 
+        db.func.count(FuelRecord.gas_station).label('count')
+    ).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id,
+        FuelRecord.gas_station.isnot(None),
+        FuelRecord.gas_station != ''
+    ).group_by(FuelRecord.gas_station).order_by(db.text('count DESC')).first()
+    
+    favorite_station = favorite_station_query[0] if favorite_station_query else "Nenhum"
+    
+    # Métricas de consumo
+    all_records = FuelRecord.query.join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).order_by(FuelRecord.date).all()
+    
+    total_km = 0
+    consumptions = []
+    km_last_30_days = 0
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    if len(all_records) > 1:
+        for i in range(1, len(all_records)):
+            distance = all_records[i].odometer - all_records[i-1].odometer
+            if distance > 0:
+                total_km += distance
+                fuel = all_records[i].liters
+                if fuel > 0:
+                    consumption = distance / fuel
+                    consumptions.append(consumption)
+                
+                # Verificar se é dos últimos 30 dias
+                if all_records[i].date >= thirty_days_ago.date():
+                    km_last_30_days += distance
+    
+    consumption_metrics = {
+        'total_km': f"{total_km:.0f} km",
+        'average_consumption': f"{sum(consumptions)/len(consumptions):.1f}" if consumptions else "0.0",
+        'best_consumption': f"{max(consumptions):.1f}" if consumptions else "0.0",
+        'km_last_30_days': f"{km_last_30_days:.0f} km"
+    }
+    
     # Preparar dados para graficos
     chart_data = []
     for vehicle in vehicles:
@@ -581,6 +639,32 @@ def dashboard():
                 'data': [{'date': r.date.strftime('%Y-%m-%d'), 'consumption': r.consumption()} for r in records if r.consumption() > 0]
             })
     
+    # Dados mensais para gráficos
+    monthly_data = {}
+    fuel_distribution = {}
+    
+    # Calcular gastos mensais
+    monthly_records = db.session.query(
+        db.func.to_char(FuelRecord.date, 'YYYY-MM').label('month'),
+        db.func.sum(FuelRecord.total_cost).label('total')
+    ).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).group_by(db.func.to_char(FuelRecord.date, 'YYYY-MM')).all()
+    
+    for month, total in monthly_records:
+        monthly_data[month] = float(total or 0)
+    
+    # Calcular distribuição de combustível
+    fuel_records = db.session.query(
+        FuelRecord.fuel_type,
+        db.func.sum(FuelRecord.liters).label('total_liters')
+    ).join(Vehicle).filter(
+        Vehicle.user_id == current_user.id
+    ).group_by(FuelRecord.fuel_type).all()
+    
+    for fuel_type, total_liters in fuel_records:
+        fuel_distribution[fuel_type] = float(total_liters or 0)
+    
     # Usar template original
     return render_template('dashboard.html', 
                          vehicles=vehicles,
@@ -588,7 +672,14 @@ def dashboard():
                          total_records=total_records,
                          recent_records=recent_records,
                          monthly_expense=monthly_expense,
-                         chart_data=chart_data)
+                         total_spent=total_spent,
+                         total_liters=total_liters,
+                         avg_price=avg_price,
+                         favorite_station=favorite_station,
+                         consumption_metrics=consumption_metrics,
+                         chart_data=chart_data,
+                         monthly_data=monthly_data,
+                         fuel_distribution=fuel_distribution)
 
 @app.route('/vehicles')
 @login_required

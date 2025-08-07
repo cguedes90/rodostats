@@ -178,17 +178,17 @@
             <div class="card-header d-flex justify-content-between align-items-center">
                 <span><i class="fas fa-list me-2"></i>Últimos Abastecimentos</span>
                 <div>
-                    <a href="{{ url_for('export_csv', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                    <a href="{{ url_for('export_data') }}" 
                        class="btn btn-outline-light btn-sm me-2">
                         <i class="fas fa-file-csv me-1"></i>CSV
                     </a>
-                    <a href="{{ url_for('export_pdf', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                    <a href="{{ url_for('analytics') }}" 
                        class="btn btn-outline-light btn-sm me-2">
-                        <i class="fas fa-file-pdf me-1"></i>PDF
+                        <i class="fas fa-chart-bar me-1"></i>Relatórios
                     </a>
-                    <a href="{{ url_for('history', vehicle_id=selected_vehicle, days=selected_days) }}" 
+                    <a href="{{ url_for('vehicles') }}" 
                        class="btn btn-primary btn-sm">
-                        <i class="fas fa-eye me-1"></i>Ver Todos
+                        <i class="fas fa-car me-1"></i>Ver Veículos
                     </a>
                 </div>
             </div>
@@ -252,8 +252,8 @@
                         <i class="fas fa-gas-pump fa-3x text-muted mb-3"></i>
                         <h5 class="text-muted">Nenhum abastecimento encontrado</h5>
                         <p class="text-muted">Comece registrando seu primeiro abastecimento!</p>
-                        <a href="{{ url_for('add_fuel') }}" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Adicionar Abastecimento
+                        <a href="{{ url_for('vehicles') }}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i>Ver Veículos
                         </a>
                     </div>
                 {% endif %}
@@ -264,8 +264,8 @@
 
 <!-- Floating Action Button -->
 <div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1000;">
-    <a href="{{ url_for('add_fuel') }}" class="btn btn-primary rounded-circle" style="width: 60px; height: 60px;">
-        <i class="fas fa-plus fa-lg"></i>
+    <a href="{{ url_for('vehicles') }}" class="btn btn-primary rounded-circle" style="width: 60px; height: 60px;">
+        <i class="fas fa-car fa-lg"></i>
     </a>
 </div>
 {% endblock %}
