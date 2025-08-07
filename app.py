@@ -810,7 +810,9 @@ def add_fuel_record(vehicle_id):
         flash('Registro adicionado com sucesso!', 'success')
         return redirect(url_for('vehicle_detail', vehicle_id=vehicle_id))
     
-    return render_template('add_fuel_record.html', vehicle=vehicle)
+    # Para GET request, passar data atual para o template
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    return render_template('add_fuel_record.html', vehicle=vehicle, current_date=current_date)
 
 @app.route('/analytics')
 @login_required
