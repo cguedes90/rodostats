@@ -97,22 +97,49 @@ def send_email(to, subject, template, **kwargs):
 
 def send_welcome_email(user):
     """Envia email de boas-vindas"""
+    from datetime import datetime
+    
+    registration_date = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    
     return send_email(
         to=user.email,
         subject="🚗 Bem-vindo ao Rodo Stats!",
         template="emails/welcome.html",
-        user=user
+        user=user,
+        user_name=user.username,
+        user_email=user.email,
+        registration_date=registration_date
     )
 
 def send_password_reset_email(user, reset_token):
     """Envia email de reset de senha"""
+    from datetime import datetime
+    import secrets
+    
     reset_url = url_for('reset_password', token=reset_token, _external=True)
+    reset_code = secrets.token_hex(3).upper()  # Código de 6 caracteres
+    request_date = datetime.now().strftime("%d/%m/%Y às %H:%M")
+    
+    # Tentar obter IP do usuário
+    user_ip = "Não disponível"
+    try:
+        from flask import request as flask_request
+        user_ip = flask_request.environ.get('HTTP_X_FORWARDED_FOR', 
+                  flask_request.environ.get('REMOTE_ADDR', 'Não disponível'))
+    except:
+        pass
+    
     return send_email(
         to=user.email,
         subject="🔑 Reset de Senha - Rodo Stats",
         template="emails/password_reset.html",
         user=user,
-        reset_url=reset_url
+        user_name=user.username,
+        user_email=user.email,
+        reset_url=reset_url,
+        reset_code=reset_code,
+        request_date=request_date,
+        user_ip=user_ip
     )
 
 def send_email_verification(user, verification_token):
