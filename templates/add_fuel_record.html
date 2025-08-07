@@ -68,11 +68,22 @@
                         </div>
 
                         <div class="mb-3">
-                            <label for="receipt_image" class="form-label">Foto da Nota Fiscal</label>
+                            <label for="receipt_image" class="form-label">Tire uma foto do cupom fiscal e/ou da bomba de combustível</label>
                             <input type="file" class="form-control" id="receipt_image" name="receipt_image" accept="image/*">
                             <small class="form-text text-muted">
-                                Envie uma foto da nota fiscal para extração automática de dados com IA
+                                <i class="fas fa-camera"></i> Tire uma foto do cupom fiscal ou da bomba de combustível para preenchimento automático dos dados com IA
                             </small>
+                            <div id="imagePreview" class="mt-2" style="display: none;">
+                                <img id="previewImage" src="" alt="Preview" class="img-thumbnail" style="max-width: 200px; max-height: 200px;">
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-primary" id="processImage">
+                                        <i class="fas fa-robot"></i> Processar com IA
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-secondary" id="clearImage">
+                                        <i class="fas fa-times"></i> Remover
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -106,5 +117,100 @@ function calculateTotal() {
     const total = (liters * pricePerLiter).toFixed(2);
     document.getElementById('total_cost').value = total;
 }
+
+// Funcionalidades da imagem
+document.getElementById('receipt_image').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('previewImage').src = e.target.result;
+            document.getElementById('imagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+document.getElementById('clearImage').addEventListener('click', function() {
+    document.getElementById('receipt_image').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('previewImage').src = '';
+});
+
+document.getElementById('processImage').addEventListener('click', function() {
+    const fileInput = document.getElementById('receipt_image');
+    const file = fileInput.files[0];
+    
+    if (!file) {
+        alert('Por favor, selecione uma imagem primeiro.');
+        return;
+    }
+    
+    // Mostrar loading
+    const processBtn = document.getElementById('processImage');
+    const originalText = processBtn.innerHTML;
+    processBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    processBtn.disabled = true;
+    
+    // Criar FormData
+    const formData = new FormData();
+    formData.append('image', file);
+    
+    // Enviar para API
+    fetch('/api/process_receipt', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            alert('Erro ao processar imagem: ' + data.error);
+        } else {
+            // Preencher campos automaticamente
+            if (data.data) {
+                document.getElementById('date').value = data.data;
+            }
+            if (data.posto) {
+                document.getElementById('gas_station').value = data.posto;
+            }
+            if (data.litros) {
+                document.getElementById('liters').value = data.litros;
+            }
+            if (data.preco_litro) {
+                document.getElementById('price_per_liter').value = data.preco_litro;
+            }
+            if (data.total) {
+                document.getElementById('total_cost').value = data.total;
+            }
+            if (data.combustivel) {
+                const fuelMap = {
+                    'gasolina': 'gasoline',
+                    'etanol': 'ethanol',
+                    'álcool': 'ethanol',
+                    'diesel': 'diesel'
+                };
+                const fuelType = fuelMap[data.combustivel.toLowerCase()] || 'gasoline';
+                document.getElementById('fuel_type').value = fuelType;
+            }
+            if (data.observacoes) {
+                document.getElementById('notes').value = data.observacoes;
+            }
+            
+            // Recalcular total se necessário
+            calculateTotal();
+            
+            alert('Dados extraídos com sucesso da imagem!');
+        }
+    })
+    .catch(error => {
+        console.error('Erro:', error);
+        alert('Erro ao processar imagem. Tente novamente.');
+    })
+    .finally(() => {
+        // Restaurar botão
+        processBtn.innerHTML = originalText;
+        processBtn.disabled = false;
+    });
+});
 </script>
 {% endblock %}

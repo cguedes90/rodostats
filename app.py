@@ -277,7 +277,7 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def process_receipt_with_ai(image_path):
-    """Processa nota fiscal com Google Gemini AI"""
+    """Processa cupom fiscal ou imagem da bomba com Google Gemini AI"""
     if not genai or not os.environ.get('GEMINI_API_KEY'):
         return None
     
@@ -292,19 +292,39 @@ def process_receipt_with_ai(image_path):
             return None
         
         prompt = """
-        Analise esta nota fiscal de posto de combustivel e extraia as seguintes informacoes em formato JSON:
+        Analise esta imagem e determine se é um cupom fiscal de posto de combustível ou uma foto da bomba de combustível.
         
+        Se for um CUPOM FISCAL, extraia as seguintes informações:
+        - Data do abastecimento
+        - Nome do posto
+        - Tipo de combustível
+        - Quantidade de litros
+        - Preço por litro
+        - Valor total
+        - Observações relevantes
+        
+        Se for uma FOTO DA BOMBA DE COMBUSTÍVEL, extraia:
+        - Tipo de combustível (indicado na bomba)
+        - Preço por litro (display da bomba)
+        - Quantidade de litros (se visível no display)
+        - Valor total (se visível no display)
+        - Nome do posto (se visível)
+        
+        Retorne as informações extraídas em formato JSON:
         {
-            "data": "YYYY-MM-DD",
-            "posto": "Nome do posto",
-            "combustivel": "tipo do combustivel (gasolina/etanol/diesel)",
-            "litros": 0.0,
-            "preco_litro": 0.0,
-            "total": 0.0,
-            "observacoes": "informacoes adicionais"
+            "tipo_imagem": "cupom_fiscal" ou "bomba_combustivel",
+            "data": "YYYY-MM-DD" ou null,
+            "posto": "Nome do posto" ou null,
+            "combustivel": "gasolina/etanol/diesel" ou null,
+            "litros": 0.0 ou null,
+            "preco_litro": 0.0 ou null,
+            "total": 0.0 ou null,
+            "observacoes": "informações adicionais extraídas" ou null,
+            "confianca": "alta/media/baixa"
         }
         
-        Se nao conseguir extrair alguma informacao, use null para esse campo.
+        Se não conseguir extrair alguma informação, use null para esse campo.
+        Para o campo "confianca", indique se a extração foi clara e precisa.
         Responda APENAS com o JSON, sem texto adicional.
         """
         
@@ -319,7 +339,21 @@ def process_receipt_with_ai(image_path):
                 json_text = json_text[:-3]
             
             try:
-                return json.loads(json_text.strip())
+                result = json.loads(json_text.strip())
+                
+                # Adicionar informações de contexto
+                if result.get('tipo_imagem') == 'bomba_combustivel':
+                    if not result.get('observacoes'):
+                        result['observacoes'] = 'Dados extraídos da bomba de combustível'
+                    else:
+                        result['observacoes'] += ' (bomba de combustível)'
+                elif result.get('tipo_imagem') == 'cupom_fiscal':
+                    if not result.get('observacoes'):
+                        result['observacoes'] = 'Dados extraídos do cupom fiscal'
+                    else:
+                        result['observacoes'] += ' (cupom fiscal)'
+                
+                return result
             except json.JSONDecodeError:
                 return None
         
