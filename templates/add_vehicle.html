@@ -91,8 +91,9 @@
                         <div class="col-md-6">
                             <div class="floating-label mb-3">
                                 <input type="number" class="form-control" id="tank_capacity" name="tank_capacity" 
-                                       placeholder="Ex: 50" min="1" max="200" step="0.1" required>
-                                <label for="tank_capacity">Capacidade do Tanque (L) *</label>
+                                       placeholder="Ex: 50" min="1" max="200" step="0.1">
+                                <label for="tank_capacity">Capacidade do Tanque (L)</label>
+                                <div class="form-text">Opcional - pode ser preenchida depois</div>
                             </div>
                         </div>
                     </div>
@@ -244,9 +245,9 @@ document.getElementById('vehicleForm').addEventListener('submit', function(e) {
     const tankCapacity = document.getElementById('tank_capacity').value;
     
     // Verificar campos obrigatórios (apenas os que realmente são required)
-    if (!brand || !model || !year || !name || !fuelType || !tankCapacity) {
+    if (!brand || !model || !year || !name || !fuelType) {
         e.preventDefault();
-        alert('Por favor, preencha todos os campos obrigatórios (Nome, Marca, Modelo, Ano, Tipo de Combustível e Capacidade do Tanque)!');
+        alert('Por favor, preencha todos os campos obrigatórios (Nome, Marca, Modelo, Ano e Tipo de Combustível)!');
         return false;
     }
     

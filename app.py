@@ -707,6 +707,13 @@ def add_vehicle():
         if not color:
             color = None
         
+        # Obter capacidade do tanque, se vazia usar valor padrão
+        tank_capacity = request.form.get('tank_capacity', '').strip()
+        if not tank_capacity:
+            tank_capacity = 50.0  # Valor padrão reasonable
+        else:
+            tank_capacity = float(tank_capacity)
+        
         vehicle = Vehicle(
             user_id=current_user.id,
             name=request.form['name'],
@@ -716,7 +723,7 @@ def add_vehicle():
             license_plate=license_plate,
             color=color,
             fuel_type=request.form['fuel_type'],
-            tank_capacity=float(request.form['tank_capacity'])
+            tank_capacity=tank_capacity
         )
         
         try:

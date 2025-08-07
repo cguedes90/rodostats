@@ -11,9 +11,15 @@
             </h1>
             <p class="text-muted">Visualize e edite todos os seus registros</p>
         </div>
-        <a href="{{ url_for('add_fuel') }}" class="btn btn-primary">
+        {% if vehicles %}
+        <a href="{{ url_for('add_fuel_record', vehicle_id=vehicles[0].id) }}" class="btn btn-primary">
             <i class="fas fa-plus me-2"></i>Novo Abastecimento
         </a>
+        {% else %}
+        <a href="{{ url_for('vehicles') }}" class="btn btn-primary">
+            <i class="fas fa-car me-2"></i>Cadastrar Veículo
+        </a>
+        {% endif %}
     </div>
 </div>
 
@@ -232,9 +238,15 @@
                     {% endif %}
                 </p>
                 <div class="d-grid gap-2 d-md-block">
-                    <a href="{{ url_for('add_fuel') }}" class="btn btn-primary btn-lg">
+                    {% if vehicles %}
+                    <a href="{{ url_for('add_fuel_record', vehicle_id=vehicles[0].id) }}" class="btn btn-primary btn-lg">
                         <i class="fas fa-plus me-2"></i>Adicionar Abastecimento
                     </a>
+                    {% else %}
+                    <a href="{{ url_for('vehicles') }}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-car me-2"></i>Cadastrar Veículo
+                    </a>
+                    {% endif %}
                     {% if selected_vehicle or selected_days %}
                         <a href="{{ url_for('history') }}" class="btn btn-outline-light btn-lg">
                             <i class="fas fa-times me-2"></i>Limpar Filtros
