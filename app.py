@@ -422,21 +422,30 @@ def forgot_password():
         user = User.query.filter_by(email=email).first()
         
         if user:
-            # Gerar token simples (em produção, use algo mais seguro)
-            import secrets
-            reset_token = secrets.token_urlsafe(32)
-            
-            # Armazenar token na sessão temporariamente
-            session[f'reset_token_{user.id}'] = {
-                'token': reset_token,
-                'expires': (datetime.utcnow() + timedelta(hours=1)).isoformat()
-            }
-            
-            if send_password_reset_email(user, reset_token):
-                flash('Email de reset enviado! Verifique sua caixa de entrada.', 'success')
-            else:
-                flash('Erro ao enviar email. Tente novamente.', 'error')
+            try:
+                # Gerar token simples (em produção, use algo mais seguro)
+                import secrets
+                reset_token = secrets.token_urlsafe(32)
+                
+                # Armazenar token na sessão temporariamente
+                session[f'reset_token_{user.id}'] = {
+                    'token': reset_token,
+                    'expires': (datetime.utcnow() + timedelta(hours=1)).isoformat()
+                }
+                
+                print(f"[RESET] Tentando enviar email de reset para: {user.email}")
+                
+                if send_password_reset_email(user, reset_token):
+                    flash('Email de reset enviado! Verifique sua caixa de entrada.', 'success')
+                    print(f"[RESET] ✅ Email de reset enviado com sucesso")
+                else:
+                    flash('Erro ao enviar email. Tente novamente.', 'error')
+                    print(f"[RESET] ❌ Falha no envio do email de reset")
+            except Exception as e:
+                print(f"[RESET] ❌ Erro na função forgot_password: {e}")
+                flash('Erro interno. Tente novamente mais tarde.', 'error')
         else:
+            print(f"[RESET] ⚠️ Usuário não encontrado para email: {email}")
             # Por segurança, sempre mostrar sucesso
             flash('Se o email existir, você receberá as instruções.', 'info')
         
