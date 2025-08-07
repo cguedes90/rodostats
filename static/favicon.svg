@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="pumpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F5A623;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F7931E;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Base do posto de combustível -->
+  <rect x="18" y="35" width="8" height="25" fill="url(#pumpGradient)" rx="2"/>
+  
+  <!-- Display do posto -->
+  <rect x="16" y="28" width="12" height="10" fill="#2C3E50" rx="1"/>
+  <rect x="17" y="29" width="10" height="8" fill="#1ABC9C" rx="0.5"/>
+  
+  <!-- Mangueira -->
+  <path d="M26 40 Q32 38 38 42 Q42 44 45 48" stroke="#333" stroke-width="2" fill="none"/>
+  
+  <!-- Bico da mangueira -->
+  <circle cx="45" cy="48" r="3" fill="#666"/>
+  
+  <!-- Símbolo de velocidade (raios) -->
+  <path d="M48 15 L52 25 L46 22 L50 32 L42 28 L46 38 L38 34 L42 44" 
+        fill="url(#speedGradient)" stroke="#F5A623" stroke-width="0.5"/>
+  
+  <!-- Símbolo $ -->
+  <text x="8" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#27AE60">$</text>
+  
+  <!-- Base/chão -->
+  <rect x="12" y="58" width="20" height="4" fill="#34495E" rx="2"/>
+  
+  <!-- Linhas de movimento/velocidade -->
+  <path d="M55 12 L60 12 M54 16 L58 16 M56 20 L60 20" stroke="#F39C12" stroke-width="1.5" stroke-linecap="round"/>
+</svg>

@@ -17,6 +17,7 @@ import json
 import base64
 import io
 import csv
+import secrets
 try:
     from PIL import Image
 except ImportError:
@@ -114,7 +115,6 @@ def send_welcome_email(user):
 def send_password_reset_email(user, reset_token):
     """Envia email de reset de senha"""
     from datetime import datetime
-    import secrets
     
     reset_url = url_for('reset_password', token=reset_token, _external=True)
     reset_code = secrets.token_hex(3).upper()  # Código de 6 caracteres
@@ -451,7 +451,6 @@ def forgot_password():
         if user:
             try:
                 # Gerar token simples (em produção, use algo mais seguro)
-                import secrets
                 reset_token = secrets.token_urlsafe(32)
                 
                 # Armazenar token na sessão temporariamente
