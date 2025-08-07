@@ -69,16 +69,30 @@ if genai:
 def send_email(to, subject, template, **kwargs):
     """Envia email usando template HTML"""
     try:
+        print(f"[EMAIL] Tentando enviar email para: {to}")
+        print(f"[EMAIL] Assunto: {subject}")
+        print(f"[EMAIL] Template: {template}")
+        print(f"[EMAIL] Servidor: {app.config.get('MAIL_SERVER', 'NÃO CONFIGURADO')}")
+        print(f"[EMAIL] Porta: {app.config.get('MAIL_PORT', 'NÃO CONFIGURADO')}")
+        print(f"[EMAIL] Username: {app.config.get('MAIL_USERNAME', 'NÃO CONFIGURADO')}")
+        print(f"[EMAIL] Remetente: {app.config.get('MAIL_DEFAULT_SENDER', 'NÃO CONFIGURADO')}")
+        
         msg = Message(
             subject,
             recipients=[to],
             html=render_template(template, **kwargs),
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
+        
+        print(f"[EMAIL] Mensagem criada, enviando...")
         mail.send(msg)
+        print(f"[EMAIL] ✅ Email enviado com sucesso para {to}")
         return True
     except Exception as e:
-        print(f"Erro ao enviar email: {e}")
+        print(f"[EMAIL] ❌ ERRO ao enviar email para {to}: {str(e)}")
+        print(f"[EMAIL] Tipo do erro: {type(e).__name__}")
+        import traceback
+        print(f"[EMAIL] Stack trace: {traceback.format_exc()}")
         return False
 
 def send_welcome_email(user):
