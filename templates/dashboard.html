@@ -8,7 +8,7 @@
         <h1 class="gradient-text">
             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
         </h1>
-        <p class="text-muted">Visão geral do seu controle de combustível</p>
+        <p class="text-light-emphasis">Visão geral do seu controle de combustível</p>
     </div>
 </div>
 
@@ -216,7 +216,7 @@
                                         {% for vehicle in vehicles %}
                                             {% if vehicle.id == record.vehicle_id %}
                                                 {{ vehicle.brand }} {{ vehicle.model }}
-                                                <br><small class="text-muted">{{ vehicle.license_plate }}</small>
+                                                <br><small class="text-light-emphasis">{{ vehicle.license_plate }}</small>
                                             {% endif %}
                                         {% endfor %}
                                     </td>
@@ -232,14 +232,14 @@
                                         {% if record.odometer %}
                                             {{ record.odometer }} km
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-light-emphasis">-</span>
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if record.gas_station %}
                                             {{ record.gas_station }}
                                         {% else %}
-                                            <span class="text-muted">-</span>
+                                            <span class="text-light-emphasis">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -249,9 +249,9 @@
                     </div>
                 {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-gas-pump fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Nenhum abastecimento encontrado</h5>
-                        <p class="text-muted">Comece registrando seu primeiro abastecimento!</p>
+                        <i class="fas fa-gas-pump fa-3x text-light mb-3"></i>
+                        <h5 class="text-light">Nenhum abastecimento encontrado</h5>
+                        <p class="text-light-emphasis">Comece registrando seu primeiro abastecimento!</p>
                         <a href="{{ url_for('vehicles') }}" class="btn btn-primary">
                             <i class="fas fa-plus me-2"></i>Ver Veículos
                         </a>

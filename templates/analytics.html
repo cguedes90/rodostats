@@ -66,9 +66,9 @@
 
                                     {% else %}
                                     <div class="text-center py-3">
-                                        <i class="fas fa-chart-line fa-2x text-muted mb-2"></i>
-                                        <p class="text-muted">Dados insuficientes para análise</p>
-                                        <small>Adicione mais abastecimentos para ver os analytics</small>
+                                        <i class="fas fa-chart-line fa-2x text-light mb-2"></i>
+                                        <p class="text-light">Dados insuficientes para análise</p>
+                                        <small class="text-light-emphasis">Adicione mais abastecimentos para ver os analytics</small>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -114,9 +114,9 @@
 
                     {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-car fa-3x text-muted mb-3"></i>
-                        <h5 class="text-muted">Nenhum veículo cadastrado</h5>
-                        <p class="text-muted">Adicione um veículo para começar a ver os analytics</p>
+                        <i class="fas fa-car fa-3x text-light mb-3"></i>
+                        <h5 class="text-light">Nenhum veículo cadastrado</h5>
+                        <p class="text-light-emphasis">Adicione um veículo para começar a ver os analytics</p>
                         <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary">
                             <i class="fas fa-plus"></i> Adicionar Veículo
                         </a>

@@ -18,6 +18,7 @@ import base64
 import io
 import csv
 import secrets
+import traceback
 try:
     from PIL import Image
 except ImportError:
@@ -188,7 +189,8 @@ class Vehicle(db.Model):
     brand = db.Column(db.String(50), nullable=False)
     model = db.Column(db.String(50), nullable=False)
     year = db.Column(db.Integer, nullable=False)
-    license_plate = db.Column(db.String(20), unique=True, nullable=False)
+    license_plate = db.Column(db.String(20), unique=True, nullable=True)
+    color = db.Column(db.String(30), nullable=True)
     fuel_type = db.Column(db.String(20), nullable=False, default='gasoline')
     tank_capacity = db.Column(db.Float, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -693,22 +695,40 @@ def vehicles():
 def add_vehicle():
     """Adicionar novo veiculo"""
     if request.method == 'POST':
+        # Obter placa do formulário, se vazia usar None
+        license_plate = request.form.get('license_plate', '').strip()
+        if not license_plate:
+            license_plate = None
+        else:
+            license_plate = license_plate.upper()
+            
+        # Obter cor do formulário, se vazia usar None
+        color = request.form.get('color', '').strip()
+        if not color:
+            color = None
+        
         vehicle = Vehicle(
             user_id=current_user.id,
             name=request.form['name'],
             brand=request.form['brand'],
             model=request.form['model'],
             year=int(request.form['year']),
-            license_plate=request.form['license_plate'].upper(),
+            license_plate=license_plate,
+            color=color,
             fuel_type=request.form['fuel_type'],
             tank_capacity=float(request.form['tank_capacity'])
         )
         
-        db.session.add(vehicle)
-        db.session.commit()
-        
-        flash('Veiculo adicionado com sucesso!', 'success')
-        return redirect(url_for('vehicles'))
+        try:
+            db.session.add(vehicle)
+            db.session.commit()
+            
+            flash('Veiculo adicionado com sucesso!', 'success')
+            return redirect(url_for('vehicles'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao cadastrar veículo. Verifique se a placa já não está em uso.', 'error')
+            print(f"Erro ao cadastrar veículo: {e}")
     
     return render_template('add_vehicle.html')
 
@@ -926,10 +946,14 @@ def internal_error(error):
 
 def create_tables():
     """Criar tabelas do banco de dados"""
-    with app.app_context():
-        db.create_all()
-        print("Tabelas criadas com sucesso!")
+    try:
+        with app.app_context():
+            db.create_all()
+            print("Tabelas criadas com sucesso!")
+    except Exception as e:
+        print(f"Erro ao criar tabelas: {e}")
 
+# Para desenvolvimento local
 if __name__ == '__main__':
     create_tables()
     
@@ -937,3 +961,15 @@ if __name__ == '__main__':
     debug = os.environ.get('FLASK_ENV') == 'development'
     
     app.run(host='0.0.0.0', port=port, debug=debug)
+
+# Para Vercel - criar tabelas apenas se necessário
+else:
+    try:
+        with app.app_context():
+            # Verificar se as tabelas existem
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            if not inspector.has_table('users'):
+                create_tables()
+    except Exception as e:
+        print(f"Erro na inicialização: {e}")

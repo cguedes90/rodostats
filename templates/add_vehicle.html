@@ -41,17 +41,17 @@
                         <div class="col-md-6">
                             <div class="floating-label mb-3">
                                 <input type="text" class="form-control" id="license_plate" name="license_plate" 
-                                       placeholder="ABC-1234" required maxlength="8" style="text-transform: uppercase;">
-                                <label for="license_plate">Placa *</label>
-                                <div class="form-text">Formato: ABC-1234 ou ABC1D23</div>
+                                       placeholder="ABC-1234" maxlength="8" style="text-transform: uppercase;">
+                                <label for="license_plate">Placa</label>
+                                <div class="form-text">Formato: ABC-1234 ou ABC1D23 (opcional)</div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="color" class="form-label">Cor *</label>
-                        <select class="form-select" id="color" name="color" required>
-                            <option value="">Selecione a cor</option>
+                        <label for="color" class="form-label">Cor</label>
+                        <select class="form-select" id="color" name="color">
+                            <option value="">Selecione a cor (opcional)</option>
                             <option value="Branco">Branco</option>
                             <option value="Preto">Preto</option>
                             <option value="Prata">Prata</option>
@@ -106,19 +106,19 @@
                 <ul class="list-unstyled">
                     <li class="mb-2">
                         <i class="fas fa-check text-success me-2"></i>
-                        Você pode cadastrar quantos veículos quiser
+                        <span class="text-light">Você pode cadastrar quantos veículos quiser</span>
                     </li>
                     <li class="mb-2">
                         <i class="fas fa-id-card text-info me-2"></i>
-                        A placa deve seguir o formato brasileiro (ABC-1234 ou ABC1D23)
+                        <span class="text-light">A placa e cor são campos opcionais que podem ser preenchidos posteriormente</span>
                     </li>
                     <li class="mb-2">
                         <i class="fas fa-chart-bar text-warning me-2"></i>
-                        Cada veículo terá seus dados de consumo separados
+                        <span class="text-light">Cada veículo terá seus dados de consumo separados</span>
                     </li>
                     <li>
                         <i class="fas fa-edit text-primary me-2"></i>
-                        Você poderá editar essas informações depois
+                        <span class="text-light">Você poderá editar essas informações depois</span>
                     </li>
                 </ul>
             </div>
@@ -206,18 +206,20 @@ document.getElementById('vehicleForm').addEventListener('submit', function(e) {
     const brand = document.getElementById('brand').value;
     const model = document.getElementById('model').value;
     const year = document.getElementById('year').value;
-    const plate = document.getElementById('license_plate').value;
-    const color = document.getElementById('color').value;
+    const name = document.getElementById('name').value;
+    const fuelType = document.getElementById('fuel_type').value;
+    const tankCapacity = document.getElementById('tank_capacity').value;
     
-    // Verificar campos obrigatórios
-    if (!brand || !model || !year || !plate || !color) {
+    // Verificar campos obrigatórios (apenas os que realmente são required)
+    if (!brand || !model || !year || !name || !fuelType || !tankCapacity) {
         e.preventDefault();
-        alert('Por favor, preencha todos os campos obrigatórios!');
+        alert('Por favor, preencha todos os campos obrigatórios (Nome, Marca, Modelo, Ano, Tipo de Combustível e Capacidade do Tanque)!');
         return false;
     }
     
-    // Validar placa
-    if (!validateLicensePlate(plate)) {
+    // Validar placa apenas se preenchida
+    const plate = document.getElementById('license_plate').value;
+    if (plate && !validateLicensePlate(plate)) {
         e.preventDefault();
         alert('Formato de placa inválido! Use ABC-1234 ou ABC1D23');
         return false;
