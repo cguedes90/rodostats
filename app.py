@@ -392,19 +392,13 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
-        print(f"[LOGIN] Tentativa de login para usuário: {username}")
-        
         user = User.query.filter_by(username=username).first()
-        print(f"[LOGIN] Usuário encontrado: {user is not None}")
         
         if user and user.check_password(password):
-            print(f"[LOGIN] Senha correta para {username}")
             login_user(user)
             next_page = request.args.get('next')
-            print(f"[LOGIN] Redirecionando para: {next_page or 'dashboard'}")
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
-            print(f"[LOGIN] Credenciais inválidas para {username}")
             flash('Usuario ou senha incorretos', 'error')
     
     return render_template('login.html')
@@ -538,10 +532,7 @@ def reset_password(token):
 @login_required
 def dashboard():
     """Dashboard principal"""
-    print(f"[DASHBOARD] Usuário atual: {current_user.username}")
-    
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
-    print(f"[DASHBOARD] Veículos encontrados: {len(vehicles)}")
     
     # Estatisticas gerais
     total_vehicles = len(vehicles)
@@ -569,9 +560,8 @@ def dashboard():
                 'data': [{'date': r.date.strftime('%Y-%m-%d'), 'consumption': r.consumption()} for r in records if r.consumption() > 0]
             })
     
-    print(f"[DASHBOARD] Renderizando template dashboard.html")
-    
-    return render_template('dashboard.html', 
+    # Usar template simples por enquanto para debug
+    return render_template('dashboard_simple.html', 
                          vehicles=vehicles,
                          total_vehicles=total_vehicles,
                          total_records=total_records,
