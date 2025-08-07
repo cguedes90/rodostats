@@ -377,6 +377,14 @@ def service_worker():
     except:
         return '', 404
 
+@app.route('/test-login')
+def test_login():
+    """Rota de teste para verificar login"""
+    if current_user.is_authenticated:
+        return f"<h1>Usuário logado: {current_user.username}</h1><p>ID: {current_user.id}</p><p>Email: {current_user.email}</p>"
+    else:
+        return "<h1>Usuário não logado</h1><a href='/login'>Fazer login</a>"
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     """Login do usuario"""
