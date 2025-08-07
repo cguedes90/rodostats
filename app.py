@@ -37,6 +37,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB
 
+# Configurações de sessão mais simples para debug
+app.config['SESSION_COOKIE_SECURE'] = False
+app.config['SESSION_COOKIE_HTTPONLY'] = False  # Relaxar para debug
+app.config['SESSION_COOKIE_SAMESITE'] = None   # Relaxar para debug
+
 # Proxy fix para producao
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
@@ -253,7 +258,14 @@ class FuelRecord(db.Model):
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    print(f"[LOAD_USER] Tentando carregar usuário com ID: {user_id}")
+    try:
+        user = User.query.get(int(user_id))
+        print(f"[LOAD_USER] Usuário carregado: {user.username if user else 'None'}")
+        return user
+    except Exception as e:
+        print(f"[LOAD_USER] Erro ao carregar usuário: {e}")
+        return None
 
 # === FUNCOES AUXILIARES ===
 
@@ -392,13 +404,19 @@ def login():
         username = request.form['username']
         password = request.form['password']
         
+        print(f"[LOGIN] Tentativa de login: {username}")
+        
         user = User.query.filter_by(username=username).first()
         
         if user and user.check_password(password):
-            login_user(user)
+            print(f"[LOGIN] Credenciais válidas para {username}")
+            session.permanent = True
+            login_user(user, remember=True)
+            print(f"[LOGIN] Usuário logado: {current_user.is_authenticated}")
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
+            print(f"[LOGIN] Credenciais inválidas para {username}")
             flash('Usuario ou senha incorretos', 'error')
     
     return render_template('login.html')
@@ -532,6 +550,9 @@ def reset_password(token):
 @login_required
 def dashboard():
     """Dashboard principal"""
+    print(f"[DASHBOARD] Usuário autenticado: {current_user.is_authenticated}")
+    print(f"[DASHBOARD] ID do usuário: {current_user.get_id() if current_user.is_authenticated else 'None'}")
+    
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
     
     # Estatisticas gerais
@@ -560,8 +581,8 @@ def dashboard():
                 'data': [{'date': r.date.strftime('%Y-%m-%d'), 'consumption': r.consumption()} for r in records if r.consumption() > 0]
             })
     
-    # Usar template simples por enquanto para debug
-    return render_template('dashboard_simple.html', 
+    # Usar template original
+    return render_template('dashboard.html', 
                          vehicles=vehicles,
                          total_vehicles=total_vehicles,
                          total_records=total_records,
