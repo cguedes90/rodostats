@@ -47,7 +47,10 @@
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="total_cost" class="form-label">Total (R$)</label>
-                                    <input type="number" step="0.01" class="form-control" id="total_cost" name="total_cost" required readonly>
+                                    <input type="number" step="0.01" class="form-control" id="total_cost" name="total_cost" required>
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-info-circle"></i> Será calculado automaticamente quando você inserir litros e preço/litro
+                                    </small>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -107,15 +110,45 @@
 </div>
 
 <script>
-// Calcular total automaticamente
-document.getElementById('liters').addEventListener('input', calculateTotal);
-document.getElementById('price_per_liter').addEventListener('input', calculateTotal);
+// Calcular campos automaticamente baseado no que foi preenchido
+document.getElementById('liters').addEventListener('input', calculateFromLitersAndPrice);
+document.getElementById('price_per_liter').addEventListener('input', calculateFromLitersAndPrice);
+document.getElementById('total_cost').addEventListener('input', calculateFromTotalAndLiters);
 
-function calculateTotal() {
+let lastEditedField = null;
+
+// Marcar qual campo foi editado por último
+document.getElementById('liters').addEventListener('focus', () => lastEditedField = 'liters');
+document.getElementById('price_per_liter').addEventListener('focus', () => lastEditedField = 'price_per_liter');
+document.getElementById('total_cost').addEventListener('focus', () => lastEditedField = 'total_cost');
+
+function calculateFromLitersAndPrice() {
     const liters = parseFloat(document.getElementById('liters').value) || 0;
     const pricePerLiter = parseFloat(document.getElementById('price_per_liter').value) || 0;
-    const total = (liters * pricePerLiter).toFixed(2);
-    document.getElementById('total_cost').value = total;
+    
+    if (liters > 0 && pricePerLiter > 0) {
+        const total = (liters * pricePerLiter).toFixed(2);
+        document.getElementById('total_cost').value = total;
+    }
+}
+
+function calculateFromTotalAndLiters() {
+    const liters = parseFloat(document.getElementById('liters').value) || 0;
+    const totalCost = parseFloat(document.getElementById('total_cost').value) || 0;
+    
+    if (liters > 0 && totalCost > 0) {
+        const pricePerLiter = (totalCost / liters).toFixed(3);
+        document.getElementById('price_per_liter').value = pricePerLiter;
+    }
+}
+
+// Função para recalcular baseada no contexto (usada pela IA)
+function calculateTotal() {
+    if (lastEditedField === 'total_cost') {
+        calculateFromTotalAndLiters();
+    } else {
+        calculateFromLitersAndPrice();
+    }
 }
 
 // Funcionalidades da imagem
