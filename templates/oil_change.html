@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-oil-can"></i> Registrar Troca de Óleo</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="date" class="form-label">Data da troca</label>
+                            <input type="date" class="form-control" id="date" name="date" value="{{ (oil.date if oil else None) or (current_date if current_date else None) }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="km_at_change" class="form-label">Km atual do veículo <span class="text-muted">(opcional)</span></label>
+                            <input type="number" class="form-control" id="km_at_change" name="km_at_change" placeholder="Ex: 48200">
+                        </div>
+                        <div class="mb-3">
+                            <label for="interval_km" class="form-label">Próxima troca em quantos km?</label>
+                            <input type="number" class="form-control" id="interval_km" name="interval_km" placeholder="Ex: 5000" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="interval_months" class="form-label">Ou em quantos meses?</label>
+                            <input type="number" class="form-control" id="interval_months" name="interval_months" placeholder="Ex: 6">
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('vehicle_detail', vehicle_id=vehicle.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-save"></i> Salvar Troca
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

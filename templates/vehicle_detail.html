@@ -9,11 +9,22 @@
                     <h5 class="mb-0">
                         <i class="fas fa-car"></i> {{ vehicle.name }}
                     </h5>
-                    <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}" class="btn btn-primary btn-sm">
-                        <i class="fas fa-plus"></i> Novo Abastecimento
-                    </a>
+                    <div>
+                        <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Novo Abastecimento
+                        </a>
+                        <a href="{{ url_for('oil_change', vehicle_id=vehicle.id) }}" class="btn btn-warning btn-sm ms-2">
+                            <i class="fas fa-oil-can"></i> Troca de Óleo
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
+                    {% if oil_alert %}
+                    <div class="alert alert-warning d-flex align-items-center" role="alert">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <div>{{ oil_alert }}</div>
+                    </div>
+                    {% endif %}
                     <div class="row">
                         <div class="col-md-6">
                             <p><strong>Marca:</strong> {{ vehicle.brand }}</p>

@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block title %}Trocas de Óleo - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="gradient-text">
+            <i class="fas fa-oil-can me-2"></i>Trocas de Óleo
+        </h1>
+        <p class="text-muted">Controle as trocas de óleo dos seus veículos</p>
+    </div>
+</div>
+
+<!-- Botão para nova troca -->
+<div class="row mb-4">
+    <div class="col-12">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#oilChangeModal">
+            <i class="fas fa-plus me-2"></i>Nova Troca de Óleo
+        </button>
+    </div>
+</div>
+
+<!-- Lista de trocas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-list me-2"></i>Histórico de Trocas
+            </div>
+            <div class="card-body">
+                {% if oil_changes %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><i class="fas fa-calendar me-1"></i>Data</th>
+                                <th><i class="fas fa-car me-1"></i>Veículo</th>
+                                <th><i class="fas fa-tachometer-alt me-1"></i>Km na Troca</th>
+                                <th><i class="fas fa-arrow-right me-1"></i>Próxima (Km) / Restam</th>
+                                <th><i class="fas fa-clock me-1"></i>Próxima (Data)</th>
+                                <th><i class="fas fa-sticky-note me-1"></i>Observações</th>
+                                <th><i class="fas fa-cogs me-1"></i>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in oil_changes %}
+                            <tr>
+                                <td>{{ item.oil.date.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <strong>{{ item.vehicle.brand }} {{ item.vehicle.model }}</strong>
+                                    <small class="text-muted d-block">{{ item.vehicle.license_plate }}</small>
+                                </td>
+                                <td>
+                                    {% if item.oil.km_at_change %}
+                                        <span class="badge bg-info">{{ "{:,}".format(item.oil.km_at_change).replace(',', '.') }} km</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.oil.next_km() %}
+                                        <span class="badge bg-warning text-dark">{{ "{:,}".format(item.oil.next_km()).replace(',', '.') }} km</span>
+                                        {% set remaining = item.oil.current_km_remaining() %}
+                                        {% if remaining is not none %}
+                                            <br><small class="text-muted">Restam: 
+                                                {% if remaining <= 500 %}
+                                                    <span class="text-danger fw-bold">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                {% elif remaining <= 1500 %}
+                                                    <span class="text-warning fw-bold">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                {% else %}
+                                                    <span class="text-success">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                {% endif %}
+                                            </small>
+                                        {% else %}
+                                            <br><small class="text-muted text-info">Configure odômetro nos abastecimentos</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                        {% if not item.oil.km_at_change %}
+                                            <br><small class="text-info">Edite para adicionar km da troca</small>
+                                        {% endif %}
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.oil.next_date() %}
+                                        {% set days_until = (item.oil.next_date() - current_date_obj).days %}
+                                        {% if days_until < 0 %}
+                                            <span class="badge bg-danger">{{ item.oil.next_date().strftime('%d/%m/%Y') }} (Vencido)</span>
+                                        {% elif days_until < 30 %}
+                                            <span class="badge bg-warning text-dark">{{ item.oil.next_date().strftime('%d/%m/%Y') }} ({{ days_until }} dias)</span>
+                                        {% else %}
+                                            <span class="badge bg-success">{{ item.oil.next_date().strftime('%d/%m/%Y') }}</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if item.oil.notes %}
+                                        <span class="text-truncate" style="max-width: 150px;" title="{{ item.oil.notes }}">{{ item.oil.notes }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary me-1" 
+                                            onclick="editOilChange({{ item.oil.id }}, '{{ item.vehicle.brand }} {{ item.vehicle.model }}', '{{ item.oil.date.strftime('%Y-%m-%d') }}', '{{ item.oil.km_at_change or '' }}', '{{ item.oil.interval_km }}', '{{ item.oil.interval_months or '' }}', '{{ item.oil.notes or '' }}')"
+                                            title="Editar troca">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" 
+                                            onclick="deleteOilChange({{ item.oil.id }})"
+                                            title="Excluir troca">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-oil-can fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">Nenhuma troca de óleo registrada</h5>
+                    <p class="text-muted">Clique no botão acima para registrar sua primeira troca de óleo</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Edição de Troca de Óleo -->
+<div class="modal fade" id="editOilChangeModal" tabindex="-1" aria-labelledby="editOilChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title" id="editOilChangeModalLabel">
+                    <i class="fas fa-edit me-2"></i>Editar Troca de Óleo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="POST" action="" id="editOilChangeForm">
+                <input type="hidden" id="edit_oil_id" name="oil_id">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_vehicle_display" class="form-label">Veículo</label>
+                                <input type="text" class="form-control" id="edit_vehicle_display" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_date" class="form-label">Data da Troca *</label>
+                                <input type="date" class="form-control" id="edit_date" name="date" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_km_at_change" class="form-label">Quilometragem Atual</label>
+                                <input type="number" class="form-control" id="edit_km_at_change" name="km_at_change" 
+                                       placeholder="Ex: 48200" min="0">
+                                <div class="form-text">Opcional - quilometragem no momento da troca</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="edit_interval_km" class="form-label">
+                                    Intervalo em Km *
+                                    <i class="fas fa-info-circle text-info ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Insira APENAS o intervalo de troca (ex: 5000 para 5mil km, 10000 para 10mil km). NÃO digite a quilometragem final!"></i>
+                                </label>
+                                <input type="number" class="form-control" id="edit_interval_km" name="interval_km" 
+                                       placeholder="Ex: 5000 (apenas o intervalo)" min="1000" max="15000" required>
+                                <div class="form-text">
+                                    <strong>Apenas o intervalo:</strong> 5000 = 5mil km, 10000 = 10mil km, etc.
+                                    <br><small class="text-warning">⚠️ NÃO digite a quilometragem total!</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="edit_interval_months" class="form-label">Intervalo em Meses</label>
+                                <input type="number" class="form-control" id="edit_interval_months" name="interval_months" 
+                                       placeholder="Ex: 6" min="1" max="24">
+                                <div class="form-text">Opcional - quantos meses até a próxima troca</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit_notes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="edit_notes" name="notes" rows="3" 
+                                  placeholder="Ex: Óleo Castrol 5W30, filtro trocado"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-save me-1"></i>Salvar Alterações
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Nova Troca de Óleo -->
+<div class="modal fade" id="oilChangeModal" tabindex="-1" aria-labelledby="oilChangeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="oilChangeModalLabel">
+                    <i class="fas fa-oil-can me-2"></i>Registrar Troca de Óleo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form method="POST" action="{{ url_for('oil_change_global') }}" id="oilChangeForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="vehicle_id" class="form-label">Veículo *</label>
+                                <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                                    <option value="">Selecione um veículo</option>
+                                    {% for vehicle in vehicles %}
+                                    <option value="{{ vehicle.id }}">
+                                        {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="date" class="form-label">Data da Troca *</label>
+                                <input type="date" class="form-control" id="date" name="date" 
+                                       value="{{ current_date }}" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="km_at_change" class="form-label">Quilometragem Atual</label>
+                                <input type="number" class="form-control" id="km_at_change" name="km_at_change" 
+                                       placeholder="Ex: 48200" min="0">
+                                <div class="form-text">Opcional - quilometragem no momento da troca</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="interval_km" class="form-label">
+                                    Intervalo em Km *
+                                    <i class="fas fa-info-circle text-info ms-1" 
+                                       data-bs-toggle="tooltip" 
+                                       data-bs-placement="top" 
+                                       title="Insira APENAS o intervalo de troca (ex: 5000 para 5mil km, 10000 para 10mil km). NÃO digite a quilometragem final!"></i>
+                                </label>
+                                <input type="number" class="form-control" id="interval_km" name="interval_km" 
+                                       placeholder="Ex: 5000 (apenas o intervalo)" min="1000" max="15000" required>
+                                <div class="form-text">
+                                    <strong>Apenas o intervalo:</strong> 5000 = 5mil km, 10000 = 10mil km, etc.
+                                    <br><small class="text-warning">⚠️ NÃO digite a quilometragem total!</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="mb-3">
+                                <label for="interval_months" class="form-label">Intervalo em Meses</label>
+                                <input type="number" class="form-control" id="interval_months" name="interval_months" 
+                                       placeholder="Ex: 6" min="1" max="24">
+                                <div class="form-text">Opcional - quantos meses até a próxima troca</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="notes" class="form-label">Observações</label>
+                        <textarea class="form-control" id="notes" name="notes" rows="3" 
+                                  placeholder="Ex: Óleo Castrol 5W30, filtro trocado"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Salvar Troca
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Mensagem se não há veículos -->
+{% if not vehicles %}
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Nenhum veículo cadastrado</h5>
+                <p class="text-muted">Você precisa cadastrar pelo menos um veículo antes de registrar trocas de óleo.</p>
+                <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-2"></i>Cadastrar Veículo
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Função para validar intervalo inteligente
+function validateInterval(intervalKm, kmAtChange) {
+    intervalKm = parseInt(intervalKm);
+    kmAtChange = parseInt(kmAtChange) || 0;
+    
+    // Se o intervalo for muito alto (provavelmente digitou a quilometragem total)
+    if (intervalKm > 15000) {
+        // Se temos km da troca, verificar se o intervalo parece ser a quilometragem total
+        if (kmAtChange > 0 && intervalKm > kmAtChange) {
+            const suggestedInterval = intervalKm - kmAtChange;
+            if (suggestedInterval >= 3000 && suggestedInterval <= 15000) {
+                return {
+                    error: true,
+                    message: `⚠️ ATENÇÃO: Você digitou ${intervalKm.toLocaleString('pt-BR')} km como intervalo.\n\nParece que você digitou a quilometragem TOTAL da próxima troca!\n\nO correto seria apenas o INTERVALO: ${suggestedInterval.toLocaleString('pt-BR')} km\n\nDeseja corrigir automaticamente?`,
+                    suggested: suggestedInterval
+                };
+            }
+        }
+        
+        return {
+            error: true,
+            message: `⚠️ Intervalo muito alto: ${intervalKm.toLocaleString('pt-BR')} km\n\nIntervalos normais são entre 3.000 e 15.000 km.\nVerifique se você não digitou a quilometragem total da próxima troca!`,
+            suggested: null
+        };
+    }
+    
+    return { error: false };
+}
+
+// Validação do formulário
+document.getElementById('oilChangeForm').addEventListener('submit', function(e) {
+    const vehicleId = document.getElementById('vehicle_id').value;
+    const intervalKm = document.getElementById('interval_km').value;
+    const kmAtChange = document.getElementById('km_at_change').value;
+    
+    if (!vehicleId) {
+        e.preventDefault();
+        alert('Por favor, selecione um veículo!');
+        return false;
+    }
+    
+    if (!intervalKm || parseInt(intervalKm) < 1000) {
+        e.preventDefault();
+        alert('Por favor, informe um intervalo em km válido (mínimo 1000 km)!');
+        return false;
+    }
+    
+    // Validação inteligente
+    const validation = validateInterval(intervalKm, kmAtChange);
+    if (validation.error) {
+        e.preventDefault();
+        if (validation.suggested && confirm(validation.message)) {
+            document.getElementById('interval_km').value = validation.suggested;
+            return false;
+        } else if (!validation.suggested) {
+            alert(validation.message);
+            return false;
+        }
+        return false;
+    }
+    
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+    submitBtn.disabled = true;
+});
+
+// Auto-focus no primeiro campo quando modal abrir
+document.getElementById('oilChangeModal').addEventListener('shown.bs.modal', function () {
+    document.getElementById('vehicle_id').focus();
+});
+
+// Inicializar tooltips
+document.addEventListener('DOMContentLoaded', function () {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    })
+});
+
+// Função para editar troca de óleo
+function editOilChange(id, vehicle, date, km, intervalKm, intervalMonths, notes) {
+    document.getElementById('edit_oil_id').value = id;
+    document.getElementById('edit_vehicle_display').value = vehicle;
+    document.getElementById('edit_date').value = date;
+    document.getElementById('edit_km_at_change').value = km;
+    document.getElementById('edit_interval_km').value = intervalKm;
+    document.getElementById('edit_interval_months').value = intervalMonths;
+    document.getElementById('edit_notes').value = notes;
+    
+    // Definir action do form
+    document.getElementById('editOilChangeForm').action = '/oil_edit/' + id;
+    
+    // Abrir modal
+    new bootstrap.Modal(document.getElementById('editOilChangeModal')).show();
+}
+
+// Função para excluir troca de óleo
+function deleteOilChange(id) {
+    if (confirm('Tem certeza que deseja excluir esta troca de óleo?')) {
+        // Criar form para POST de exclusão
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/oil_delete/' + id;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+// Validação do formulário de edição
+document.getElementById('editOilChangeForm').addEventListener('submit', function(e) {
+    const intervalKm = document.getElementById('edit_interval_km').value;
+    const kmAtChange = document.getElementById('edit_km_at_change').value;
+    
+    if (!intervalKm || parseInt(intervalKm) < 1000) {
+        e.preventDefault();
+        alert('Por favor, informe um intervalo em km válido (mínimo 1000 km)!');
+        return false;
+    }
+    
+    // Validação inteligente
+    const validation = validateInterval(intervalKm, kmAtChange);
+    if (validation.error) {
+        e.preventDefault();
+        if (validation.suggested && confirm(validation.message)) {
+            document.getElementById('edit_interval_km').value = validation.suggested;
+            return false;
+        } else if (!validation.suggested) {
+            alert(validation.message);
+            return false;
+        }
+        return false;
+    }
+    
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Salvando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

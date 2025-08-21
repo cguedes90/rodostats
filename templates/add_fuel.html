@@ -34,20 +34,32 @@
                     </div>
                     
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="floating-label mb-3">
                                 <input type="number" class="form-control" id="liters" name="liters" 
-                                       step="0.01" min="0" placeholder="0.00" required>
-                                <label for="liters">Litros *</label>
+                                       step="0.01" min="0" placeholder="0.00">
+                                <label for="liters">Litros</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="price_per_liter" name="price_per_liter" 
+                                       step="0.001" min="0" placeholder="0.000">
+                                <label for="price_per_liter">Preço por Litro (R$)</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
                             <div class="floating-label mb-3">
                                 <input type="number" class="form-control" id="total_cost" name="total_cost" 
-                                       step="0.01" min="0" placeholder="0.00" required>
-                                <label for="total_cost">Valor Total (R$) *</label>
+                                       step="0.01" min="0" placeholder="0.00">
+                                <label for="total_cost">Valor Total (R$)</label>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Cálculo Inteligente:</strong> Preencha 2 dos 3 campos acima e o terceiro será calculado automaticamente
                     </div>
                     
                     <div class="mb-3">
@@ -79,11 +91,6 @@
                         </label>
                     </div>
                     
-                    <!-- Cálculo automático -->
-                    <div class="alert alert-info" id="priceCalculation" style="display: none;">
-                        <i class="fas fa-calculator me-2"></i>
-                        <strong>Preço por litro:</strong> <span id="pricePerLiter">R$ 0,000</span>
-                    </div>
                     
                     <div class="d-grid">
                         <button type="submit" class="btn btn-primary">
@@ -196,23 +203,42 @@
 
 {% block scripts %}
 <script>
-// Cálculo automático do preço por litro
-function calculatePricePerLiter() {
-    const liters = parseFloat(document.getElementById('liters').value) || 0;
-    const totalCost = parseFloat(document.getElementById('total_cost').value) || 0;
+// Cálculo inteligente - preenche automaticamente o campo que falta
+function smartCalculate() {
+    // Converter vírgula para ponto para cálculos corretos
+    const liters = parseFloat(document.getElementById('liters').value.replace(',', '.')) || 0;
+    const pricePerLiter = parseFloat(document.getElementById('price_per_liter').value.replace(',', '.')) || 0;
+    const totalCost = parseFloat(document.getElementById('total_cost').value.replace(',', '.')) || 0;
     
-    if (liters > 0 && totalCost > 0) {
-        const pricePerLiter = totalCost / liters;
-        document.getElementById('pricePerLiter').textContent = 
-            'R$ ' + pricePerLiter.toFixed(3);
-        document.getElementById('priceCalculation').style.display = 'block';
-    } else {
-        document.getElementById('priceCalculation').style.display = 'none';
+    // Contar quantos campos estão preenchidos
+    const filledFields = [liters > 0, pricePerLiter > 0, totalCost > 0].filter(Boolean).length;
+    
+    // Só calcular se exatamente 2 campos estão preenchidos
+    if (filledFields === 2) {
+        // Cenário 1: Temos Litros + Preço/Litro → Calcular Total
+        if (liters > 0 && pricePerLiter > 0 && totalCost === 0) {
+            const calculatedTotal = (liters * pricePerLiter).toFixed(2);
+            document.getElementById('total_cost').value = calculatedTotal;
+        }
+        
+        // Cenário 2: Temos Litros + Total → Calcular Preço/Litro
+        else if (liters > 0 && totalCost > 0 && pricePerLiter === 0) {
+            const calculatedPrice = (totalCost / liters).toFixed(3);
+            document.getElementById('price_per_liter').value = calculatedPrice;
+        }
+        
+        // Cenário 3: Temos Preço/Litro + Total → Calcular Litros
+        else if (pricePerLiter > 0 && totalCost > 0 && liters === 0) {
+            const calculatedLiters = (totalCost / pricePerLiter).toFixed(2);
+            document.getElementById('liters').value = calculatedLiters;
+        }
     }
 }
 
-document.getElementById('liters').addEventListener('input', calculatePricePerLiter);
-document.getElementById('total_cost').addEventListener('input', calculatePricePerLiter);
+// Adicionar eventos para todos os campos
+document.getElementById('liters').addEventListener('input', smartCalculate);
+document.getElementById('price_per_liter').addEventListener('input', smartCalculate);
+document.getElementById('total_cost').addEventListener('input', smartCalculate);
 
 // Preview da imagem
 document.getElementById('receipt_image').addEventListener('change', function(e) {
@@ -280,8 +306,8 @@ document.getElementById('processReceipt').addEventListener('click', function() {
             document.getElementById('gas_station').value = data.gas_station;
         }
         
-        // Calcular preço por litro
-        calculatePricePerLiter();
+        // Aplicar cálculo inteligente nos dados processados
+        smartCalculate();
         
         // Mostrar sucesso
         document.getElementById('aiResults').style.display = 'block';

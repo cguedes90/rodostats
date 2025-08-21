@@ -113,14 +113,33 @@
 // Sistema inteligente de cálculo automático
 // Calcula qualquer campo baseado nos outros dois preenchidos
 
-document.getElementById('liters').addEventListener('input', smartCalculate);
-document.getElementById('price_per_liter').addEventListener('input', smartCalculate);
-document.getElementById('total_cost').addEventListener('input', smartCalculate);
+// Usar delay para evitar cálculos prematuros enquanto digitando
+let calculateTimeout;
+
+function debouncedCalculate() {
+    clearTimeout(calculateTimeout);
+    calculateTimeout = setTimeout(smartCalculate, 300); // 300ms delay
+}
+
+document.getElementById('liters').addEventListener('input', debouncedCalculate);
+document.getElementById('price_per_liter').addEventListener('input', debouncedCalculate);
+document.getElementById('total_cost').addEventListener('input', debouncedCalculate);
 
 function smartCalculate() {
-    const liters = parseFloat(document.getElementById('liters').value) || 0;
-    const pricePerLiter = parseFloat(document.getElementById('price_per_liter').value) || 0;
-    const totalCost = parseFloat(document.getElementById('total_cost').value) || 0;
+    // Converter vírgula para ponto para cálculos corretos
+    const litersRaw = document.getElementById('liters').value;
+    const priceRaw = document.getElementById('price_per_liter').value;
+    const totalRaw = document.getElementById('total_cost').value;
+    
+    const liters = parseFloat(litersRaw.replace(',', '.')) || 0;
+    const pricePerLiter = parseFloat(priceRaw.replace(',', '.')) || 0;
+    const totalCost = parseFloat(totalRaw.replace(',', '.')) || 0;
+    
+    // Debug - remover depois de testar
+    console.log('Debug smartCalculate:', {
+        litersRaw, priceRaw, totalRaw,
+        liters, pricePerLiter, totalCost
+    });
     
     // Contar quantos campos estão preenchidos (> 0)
     const filledFields = [liters > 0, pricePerLiter > 0, totalCost > 0].filter(Boolean).length;
@@ -131,18 +150,21 @@ function smartCalculate() {
         // Cenário 1: Temos Litros + Preço/Litro → Calcular Total
         if (liters > 0 && pricePerLiter > 0 && totalCost === 0) {
             const calculatedTotal = (liters * pricePerLiter).toFixed(2);
+            console.log('Calculando total:', liters, '*', pricePerLiter, '=', calculatedTotal);
             document.getElementById('total_cost').value = calculatedTotal;
         }
         
         // Cenário 2: Temos Litros + Total → Calcular Preço/Litro
         else if (liters > 0 && totalCost > 0 && pricePerLiter === 0) {
             const calculatedPrice = (totalCost / liters).toFixed(3);
+            console.log('Calculando preço:', totalCost, '/', liters, '=', calculatedPrice);
             document.getElementById('price_per_liter').value = calculatedPrice;
         }
         
         // Cenário 3: Temos Preço/Litro + Total → Calcular Litros
-        else if (pricePerLiter > 0 && totalCost > 0 && liters === 0) {
+        else if (pricePerLiter > 0 && totalCost >= 10 && liters === 0) { // Total >= 10 para evitar cálculos prematuros
             const calculatedLiters = (totalCost / pricePerLiter).toFixed(2);
+            console.log('Calculando litros:', totalCost, '/', pricePerLiter, '=', calculatedLiters);
             document.getElementById('liters').value = calculatedLiters;
         }
     }

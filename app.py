@@ -159,7 +159,74 @@ def send_email_verification(user, verification_token):
         verification_url=verification_url
     )
 
+
 # === MODELOS ===
+
+class OilChange(db.Model):
+    __tablename__ = 'oil_changes'
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=False)
+    date = db.Column(db.Date, default=datetime.utcnow)
+    km_at_change = db.Column(db.Integer, nullable=True)
+    interval_km = db.Column(db.Integer, nullable=False)
+    interval_months = db.Column(db.Integer, nullable=True)
+    notes = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def next_km(self):
+        """Calcula a quilometragem da próxima troca"""
+        if self.km_at_change and self.interval_km:
+            return self.km_at_change + self.interval_km
+        return None
+    
+    def current_km_remaining(self):
+        """Calcula quantos km restam para a próxima troca baseado no último abastecimento"""
+        # Primeiro, precisa ter quilometragem da troca registrada
+        if not self.km_at_change or not self.interval_km:
+            return None
+            
+        # Próxima troca será na quilometragem da troca + intervalo
+        next_km = self.km_at_change + self.interval_km
+        
+        # Pegar o último abastecimento com odômetro para comparar
+        last_fuel = FuelRecord.query.filter_by(vehicle_id=self.vehicle_id).filter(
+            FuelRecord.odometer.isnot(None)
+        ).order_by(FuelRecord.date.desc()).first()
+        
+        if last_fuel and last_fuel.odometer:
+            remaining = next_km - last_fuel.odometer
+            return max(0, remaining)  # Não retornar negativo
+        
+        return None
+    def next_date(self):
+        if self.date and self.interval_months:
+            return self.date + timedelta(days=30*self.interval_months)
+        return None
+# === ROTAS ===
+
+@app.route('/oil_change/<int:vehicle_id>', methods=['GET', 'POST'])
+@login_required
+def oil_change(vehicle_id):
+    vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
+    if request.method == 'POST':
+        km_at_change = request.form.get('km_at_change') or None
+        interval_km = int(request.form['interval_km'])
+        interval_months = request.form.get('interval_months') or None
+        if interval_months:
+            interval_months = int(interval_months)
+        notes = request.form.get('notes')
+        oil = OilChange(
+            vehicle_id=vehicle_id,
+            km_at_change=km_at_change,
+            interval_km=interval_km,
+            interval_months=interval_months,
+            notes=notes
+        )
+        db.session.add(oil)
+        db.session.commit()
+        flash('Troca de óleo registrada com sucesso!', 'success')
+        return redirect(url_for('vehicle_detail', vehicle_id=vehicle_id))
+    return render_template('oil_change.html', vehicle=vehicle)
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -779,22 +846,91 @@ def vehicle_detail(vehicle_id):
     """Detalhes do veiculo"""
     vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
     records = FuelRecord.query.filter_by(vehicle_id=vehicle_id).order_by(FuelRecord.date.desc()).all()
-    
     # Calcular estatisticas
     efficiency = calculate_fuel_efficiency(vehicle_id)
-    
     # Ultimos 30 dias
     thirty_days_ago = datetime.now() - timedelta(days=30)
     recent_expense = db.session.query(db.func.sum(FuelRecord.total_cost)).filter(
         FuelRecord.vehicle_id == vehicle_id,
         FuelRecord.date >= thirty_days_ago
     ).scalar() or 0
-    
+
+    # Alerta de troca de óleo aprimorado
+    last_oil = OilChange.query.filter_by(vehicle_id=vehicle_id).order_by(OilChange.date.desc()).first()
+    oil_alert = None
+    if last_oil:
+        # Verificar por km
+        last_km = records[0].odometer if records else None
+        if last_oil.km_at_change is not None and last_oil.interval_km:
+            # Se o usuário informou o km da troca, calcula normalmente
+            if last_km is not None:
+                km_restante = (last_oil.km_at_change + last_oil.interval_km) - last_km
+                if km_restante <= 300:
+                    oil_alert = f"Troca de óleo próxima! Faltam {km_restante} km para a próxima troca."
+            else:
+                # Não há registro de km atual, mas temos intervalo
+                oil_alert = "Troca de óleo: não foi possível calcular a quilometragem restante. Informe o km no próximo abastecimento."
+        elif last_oil.interval_km:
+            # Se não informou km_at_change, mas informou intervalo_km, alerta por tempo
+            oil_alert = "Troca de óleo: não foi possível calcular a quilometragem restante. Informe o km no próximo abastecimento."
+        # Verificar por data
+        if last_oil.interval_months:
+            next_date = last_oil.next_date()
+            if next_date:
+                dias_restantes = (next_date - datetime.now().date()).days
+                if dias_restantes <= 15:
+                    if oil_alert:
+                        oil_alert += f" Troca de óleo por tempo próxima! {next_date.strftime('%d/%m/%Y')}"
+                    else:
+                        oil_alert = f"Troca de óleo por tempo próxima! {next_date.strftime('%d/%m/%Y')}"
+
     return render_template('vehicle_detail.html', 
                          vehicle=vehicle, 
                          records=records, 
                          efficiency=efficiency,
-                         recent_expense=recent_expense)
+                         recent_expense=recent_expense,
+                         oil_alert=oil_alert)
+
+@app.route('/add_fuel', methods=['GET', 'POST'])
+@login_required
+def add_fuel():
+    """Adicionar abastecimento - formulário manual"""
+    vehicles = Vehicle.query.filter_by(user_id=current_user.id).all()
+    
+    if request.method == 'POST':
+        # Criar registro de combustível
+        record = FuelRecord(
+            vehicle_id=int(request.form['vehicle_id']),
+            date=datetime.now().date(),
+            odometer=float(request.form['odometer']) if request.form.get('odometer') else 0,
+            liters=float(request.form['liters']),
+            price_per_liter=float(request.form['price_per_liter']) if request.form.get('price_per_liter') else 0,
+            total_cost=float(request.form['total_cost']),
+            gas_station=request.form.get('gas_station', ''),
+            fuel_type=request.form.get('fuel_type', 'Gasolina Comum'),
+            notes='',
+            full_tank=bool(request.form.get('full_tank'))
+        )
+        
+        # Se não foi informado price_per_liter, calcular
+        if not record.price_per_liter and record.liters > 0:
+            record.price_per_liter = record.total_cost / record.liters
+        
+        # Se não foi informado total_cost, calcular
+        if not record.total_cost and record.liters > 0 and record.price_per_liter > 0:
+            record.total_cost = record.liters * record.price_per_liter
+        
+        # Se não foi informado liters, calcular
+        if not record.liters and record.total_cost > 0 and record.price_per_liter > 0:
+            record.liters = record.total_cost / record.price_per_liter
+        
+        db.session.add(record)
+        db.session.commit()
+        
+        flash('Abastecimento adicionado com sucesso!', 'success')
+        return redirect(url_for('vehicle_detail', vehicle_id=record.vehicle_id))
+    
+    return render_template('add_fuel.html', vehicles=vehicles)
 
 @app.route('/add_fuel_record/<int:vehicle_id>', methods=['GET', 'POST'])
 @login_required
@@ -973,6 +1109,152 @@ def export_data():
         download_name=f'rodostats_export_{datetime.now().strftime("%Y%m%d")}.csv',
         mimetype='text/csv'
     )
+
+# === ROTA GLOBAL DE TROCA DE ÓLEO ===
+
+# Rota apenas para processar POST do modal de troca de óleo
+@app.route('/oil_change_global', methods=['POST'])
+@login_required
+def oil_change_global():
+    try:
+        vehicle_id = int(request.form['vehicle_id'])
+        
+        # Verificar se veículo pertence ao usuário
+        vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first()
+        if not vehicle:
+            flash('Veículo não encontrado!', 'error')
+            return redirect(url_for('oil_list'))
+        
+        # Converter data corretamente
+        date_str = request.form.get('date')
+        if date_str:
+            date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        else:
+            date = datetime.now().date()
+        
+        km_at_change = request.form.get('km_at_change')
+        if km_at_change:
+            km_at_change = int(km_at_change)
+        else:
+            km_at_change = None
+            
+        interval_km = int(request.form['interval_km'])
+        
+        interval_months = request.form.get('interval_months')
+        if interval_months:
+            interval_months = int(interval_months)
+        else:
+            interval_months = None
+            
+        notes = request.form.get('notes')
+        
+        oil = OilChange(
+            vehicle_id=vehicle_id,
+            date=date,
+            km_at_change=km_at_change,
+            interval_km=interval_km,
+            interval_months=interval_months,
+            notes=notes
+        )
+        db.session.add(oil)
+        db.session.commit()
+        flash('Troca de óleo registrada com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao registrar troca de óleo: {str(e)}', 'error')
+    
+    return redirect(url_for('oil_list'))
+
+@app.route('/oil')
+@login_required
+def oil_list():
+    # Lista todas as trocas de óleo dos veículos do usuário
+    vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
+    oil_changes = []
+    for v in vehicles:
+        changes = OilChange.query.filter_by(vehicle_id=v.id).order_by(OilChange.date.desc()).all()
+        for c in changes:
+            oil_changes.append({
+                'vehicle': v,
+                'oil': c
+            })
+    oil_changes = sorted(oil_changes, key=lambda x: x['oil'].date, reverse=True)
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    current_date_obj = datetime.now().date()
+    return render_template('oil_list.html', 
+                         oil_changes=oil_changes, 
+                         vehicles=vehicles, 
+                         current_date=current_date,
+                         current_date_obj=current_date_obj)
+
+@app.route('/oil_edit/<int:oil_id>', methods=['POST'])
+@login_required
+def oil_edit(oil_id):
+    try:
+        # Buscar a troca de óleo e verificar se pertence ao usuário
+        oil_change = OilChange.query.join(Vehicle).filter(
+            OilChange.id == oil_id,
+            Vehicle.user_id == current_user.id
+        ).first()
+        
+        if not oil_change:
+            flash('Troca de óleo não encontrada!', 'error')
+            return redirect(url_for('oil_list'))
+        
+        # Atualizar dados
+        date_str = request.form.get('date')
+        if date_str:
+            oil_change.date = datetime.strptime(date_str, '%Y-%m-%d').date()
+        
+        km_at_change = request.form.get('km_at_change')
+        if km_at_change:
+            oil_change.km_at_change = int(km_at_change)
+        else:
+            oil_change.km_at_change = None
+            
+        oil_change.interval_km = int(request.form['interval_km'])
+        
+        interval_months = request.form.get('interval_months')
+        if interval_months:
+            oil_change.interval_months = int(interval_months)
+        else:
+            oil_change.interval_months = None
+            
+        oil_change.notes = request.form.get('notes')
+        
+        db.session.commit()
+        flash('Troca de óleo atualizada com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao atualizar troca de óleo: {str(e)}', 'error')
+    
+    return redirect(url_for('oil_list'))
+
+@app.route('/oil_delete/<int:oil_id>', methods=['POST'])
+@login_required
+def oil_delete(oil_id):
+    try:
+        # Buscar a troca de óleo e verificar se pertence ao usuário
+        oil_change = OilChange.query.join(Vehicle).filter(
+            OilChange.id == oil_id,
+            Vehicle.user_id == current_user.id
+        ).first()
+        
+        if not oil_change:
+            flash('Troca de óleo não encontrada!', 'error')
+            return redirect(url_for('oil_list'))
+        
+        db.session.delete(oil_change)
+        db.session.commit()
+        flash('Troca de óleo excluída com sucesso!', 'success')
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir troca de óleo: {str(e)}', 'error')
+    
+    return redirect(url_for('oil_list'))
 
 # === TRATAMENTO DE ERROS ===
 
