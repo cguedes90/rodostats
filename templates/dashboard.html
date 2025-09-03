@@ -8,7 +8,7 @@
         <h1 class="gradient-text">
             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
         </h1>
-        <p class="text-light-emphasis">Visão geral do seu controle de combustível</p>
+        <p class="text-info">Visão geral do seu controle de combustível</p>
     </div>
 </div>
 
@@ -193,7 +193,7 @@
                 </div>
             </div>
             <div class="card-body">
-                {% if records %}
+                {% if recent_records %}
                     <div class="table-responsive">
                         <table class="table table-dark table-hover">
                             <thead>
@@ -209,9 +209,9 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for record in records[:10] %}
+                                {% for record in recent_records %}
                                 <tr>
-                                    <td>{{ record.fuel_date.strftime('%d/%m/%Y') }}</td>
+                                    <td>{{ record.date.strftime('%d/%m/%Y') }}</td>
                                     <td>
                                         {% for vehicle in vehicles %}
                                             {% if vehicle.id == record.vehicle_id %}

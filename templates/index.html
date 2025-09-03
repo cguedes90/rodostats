@@ -1,98 +1,1104 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodo Stats - Controle Inteligente de Combustível com IA</title>
+    <meta name="description" content="Revolucione o controle de combustível com IA. Processamento automático de cupons fiscais, análises avançadas e economia real para pessoas físicas e frotas empresariais.">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #f1f5f9;
+            --text-color: #1e293b;
+            --gradient-blue: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            --gradient-green: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            --gradient-orange: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            --gradient-purple: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            --shadow-light: 0 4px 20px rgba(0,0,0,0.06);
+            --shadow-medium: 0 8px 30px rgba(0,0,0,0.1);
+            --shadow-heavy: 0 20px 60px rgba(0,0,0,0.12);
+            --shadow-xl: 0 25px 80px rgba(0,0,0,0.15);
+        }
 
-{% block title %}Página Inicial - Rodo Stats{% endblock %}
+        * {
+            font-family: 'Inter', sans-serif;
+        }
 
-{% block content %}
-<div class="min-vh-100 d-flex align-items-center">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-lg-8 col-xl-6">
-                <div class="text-center mb-4">
-                    <div class="mb-3">
-                        <i class="fas fa-gas-pump fa-4x gradient-text"></i>
-                    </div>
-                    <h1 class="display-4 fw-bold gradient-text mb-3">Rodo Stats</h1>
-                    <p class="lead text-muted mb-3">
-                        Controle Inteligente de Combustível com IA
-                    </p>
-                    <p class="text-muted">
-                        Gerencie seus gastos com combustível, processe recibos automaticamente 
-                        e obtenha análises detalhadas de consumo.
-                    </p>
-                </div>
+        body {
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
 
-                <div class="row g-3 mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100 glass-effect">
-                            <div class="card-body text-center">
-                                <i class="fas fa-robot fa-3x text-info mb-3"></i>
-                                <h5>IA Integrada</h5>
-                                <p>Processamento automático de recibos com inteligência artificial avançada</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 glass-effect">
-                            <div class="card-body text-center">
-                                <i class="fas fa-chart-line fa-3x text-success mb-3"></i>
-                                <h5>Análises Avançadas</h5>
-                                <p>Métricas precisas de consumo e quilometragem</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 glass-effect">
-                            <div class="card-body text-center">
-                                <i class="fas fa-mobile-alt fa-3x text-primary mb-3"></i>
-                                <h5>PWA Moderna</h5>
-                                <p>Experiência mobile nativa instalável</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100 glass-effect">
-                            <div class="card-body text-center">
-                                <i class="fas fa-shield-alt fa-3x text-warning mb-3"></i>
-                                <h5>Seguro</h5>
-                                <p>Dados protegidos com criptografia avançada</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        /* NAVBAR */
+        .navbar-custom {
+            backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.95) !important;
+            border-bottom: 1px solid rgba(255,255,255,0.18);
+            transition: all 0.3s ease;
+            box-shadow: 0 1px 10px rgba(0,0,0,0.05);
+        }
 
-                <div class="text-center">
-                    <div class="d-grid gap-2 d-md-block">
-                        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-5">
-                            <i class="fas fa-user-plus me-2"></i>Começar Grátis
+        .navbar-brand {
+            font-weight: 800;
+            font-size: 1.8rem;
+            background: var(--gradient-blue);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .nav-link {
+            font-weight: 500;
+            color: var(--text-color) !important;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color) !important;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            bottom: -5px;
+            left: 50%;
+            background: var(--gradient-blue);
+            transition: all 0.3s ease;
+            transform: translateX(-50%);
+        }
+
+        .nav-link:hover::after {
+            width: 100%;
+        }
+
+        /* HERO SECTION */
+        .hero-section {
+            background: var(--gradient-blue);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 15% 85%, rgba(245, 158, 11, 0.3), transparent 50%),
+                radial-gradient(circle at 85% 15%, rgba(16, 185, 129, 0.25), transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.2), transparent 50%);
+        }
+
+        .hero-content {
+            position: relative;
+            z-index: 2;
+            color: white;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.2);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .hero-title {
+            font-size: 4.5rem;
+            font-weight: 900;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            line-height: 1.1;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            font-weight: 400;
+            margin-bottom: 3rem;
+            opacity: 0.95;
+            line-height: 1.6;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 4rem;
+            margin-bottom: 3rem;
+            flex-wrap: wrap;
+        }
+
+        .hero-stat {
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-stat-number {
+            font-size: 3rem;
+            font-weight: 900;
+            display: block;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            background: linear-gradient(45deg, #ffffff, #f8fafc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-stat-label {
+            font-size: 1rem;
+            opacity: 0.85;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+
+        .hero-stat::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 2px;
+            background: rgba(255,255,255,0.3);
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* CALL TO ACTION BUTTONS */
+        .cta-buttons {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-cta-primary {
+            background: linear-gradient(45deg, #ffffff, #f8fafc);
+            color: var(--primary-color);
+            border: none;
+            padding: 20px 50px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            border-radius: 60px;
+            box-shadow: var(--shadow-medium);
+            transition: all 0.4s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-cta-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid rgba(255,255,255,0.4);
+            padding: 18px 50px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 60px;
+            transition: all 0.4s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            backdrop-filter: blur(10px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-cta-primary:hover {
+            transform: translateY(-5px) scale(1.05);
+            box-shadow: var(--shadow-xl);
+            color: var(--primary-dark);
+        }
+
+        .btn-cta-secondary:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.6);
+            transform: translateY(-3px);
+            color: white;
+        }
+
+        .btn-cta-primary::before,
+        .btn-cta-secondary::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            transition: all 0.6s ease;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .btn-cta-primary:hover::before,
+        .btn-cta-secondary:hover::before {
+            width: 300px;
+            height: 300px;
+        }
+
+        /* HERO VISUAL */
+        .hero-visual {
+            position: relative;
+            height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-phone-mockup {
+            width: 280px;
+            height: 500px;
+            background: linear-gradient(145deg, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+            border-radius: 40px;
+            padding: 20px;
+            backdrop-filter: blur(20px);
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: var(--shadow-xl);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .phone-screen {
+            width: 100%;
+            height: 100%;
+            background: #1e293b;
+            border-radius: 30px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .screen-header {
+            height: 60px;
+            background: var(--gradient-blue);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .screen-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            flex: 1;
+        }
+
+        .mini-stat {
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+            color: white;
+            font-size: 0.8rem;
+        }
+
+        .mini-stat-value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        /* FEATURES SECTION */
+        .features-section {
+            padding: 140px 0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 100px;
+        }
+
+        .section-badge {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+            color: var(--primary-color);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: 3.5rem;
+            font-weight: 900;
+            margin-bottom: 2rem;
+            color: var(--text-color);
+            line-height: 1.2;
+        }
+
+        .section-subtitle {
+            font-size: 1.3rem;
+            color: #64748b;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        .feature-card {
+            background: white;
+            border-radius: 28px;
+            padding: 3.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            transition: all 0.5s ease;
+            border: 1px solid rgba(226, 232, 240, 0.3);
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: var(--gradient-blue);
+            transform: scaleX(0);
+            transition: transform 0.5s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-15px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .feature-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .feature-icon {
+            width: 100px;
+            height: 100px;
+            background: var(--gradient-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2.5rem;
+            font-size: 2.5rem;
+            color: white;
+            box-shadow: var(--shadow-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .feature-icon::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg) translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .feature-card:hover .feature-icon::after {
+            transform: rotate(45deg) translateX(100%);
+        }
+
+        .feature-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .feature-description {
+            color: #64748b;
+            line-height: 1.8;
+            font-size: 1.1rem;
+        }
+
+        /* HOW IT WORKS */
+        .how-it-works {
+            padding: 140px 0;
+            background: white;
+            position: relative;
+        }
+
+        .how-it-works::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, transparent 0%, rgba(248, 250, 252, 0.3) 100%);
+        }
+
+        .step-card {
+            text-align: center;
+            padding: 3rem;
+            position: relative;
+        }
+
+        .step-number {
+            width: 100px;
+            height: 100px;
+            background: var(--gradient-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 2.5rem;
+            font-size: 2.5rem;
+            font-weight: 900;
+            color: white;
+            box-shadow: var(--shadow-light);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .step-number::after {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: var(--gradient-blue);
+            border-radius: 50%;
+            z-index: -1;
+            opacity: 0.3;
+            animation: pulse 3s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.3; }
+            50% { transform: scale(1.1); opacity: 0.1; }
+        }
+
+        .step-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: var(--text-color);
+        }
+
+        .step-description {
+            color: #64748b;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* BENEFITS SECTION */
+        .benefits-section {
+            padding: 140px 0;
+            background: var(--gradient-blue);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .benefits-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(245, 158, 11, 0.2), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.15), transparent 50%);
+        }
+
+        .benefits-grid {
+            position: relative;
+            z-index: 2;
+        }
+
+        .benefit-item {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .benefit-icon {
+            font-size: 3rem;
+            margin-bottom: 1.5rem;
+            color: #fbbf24;
+        }
+
+        .benefit-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .benefit-description {
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+
+        /* PRICING SECTION */
+        .pricing-section {
+            padding: 140px 0;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+            position: relative;
+        }
+
+        .pricing-toggle {
+            background: rgba(37, 99, 235, 0.1);
+            border-radius: 60px;
+            padding: 8px;
+            display: inline-flex;
+            margin: 3rem 0;
+            border: 2px solid rgba(37, 99, 235, 0.1);
+        }
+
+        .toggle-option {
+            padding: 15px 40px;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .toggle-option.active {
+            background: var(--primary-color);
+            color: white;
+            box-shadow: var(--shadow-light);
+        }
+
+        .pricing-cards {
+            display: none;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 4rem;
+        }
+
+        .pricing-cards.active {
+            display: flex;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 28px;
+            padding: 3.5rem 2.5rem;
+            text-align: center;
+            box-shadow: var(--shadow-light);
+            transition: all 0.4s ease;
+            flex: 1;
+            max-width: 380px;
+            position: relative;
+            border: 2px solid rgba(226, 232, 240, 0.5);
+        }
+
+        .pricing-card.popular {
+            transform: scale(1.05);
+            border-color: #fbbf24;
+            box-shadow: var(--shadow-medium);
+        }
+
+        .pricing-card.popular::before {
+            content: 'Mais Popular';
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(45deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+
+        .pricing-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .pricing-card.popular:hover {
+            transform: translateY(-10px) scale(1.05);
+        }
+
+        /* CROSS-PROMOTION SECTION */
+        .cross-promotion {
+            padding: 140px 0;
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cross-promotion::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(245, 158, 11, 0.15), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.1), transparent 50%);
+        }
+
+        .promo-card {
+            background: rgba(255,255,255,0.1);
+            border-radius: 24px;
+            padding: 3rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+            z-index: 2;
+        }
+
+        .promo-icon {
+            width: 80px;
+            height: 80px;
+            background: var(--gradient-orange);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            margin: 0 auto 2rem;
+        }
+
+        .btn-fleet {
+            background: var(--gradient-orange);
+            color: white;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            border-radius: 50px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-fleet:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+            color: white;
+        }
+
+        /* TESTIMONIALS */
+        .testimonials-section {
+            padding: 140px 0;
+            background: white;
+        }
+
+        .testimonial-card {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 3.5rem;
+            box-shadow: var(--shadow-light);
+            text-align: center;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(226, 232, 240, 0.5);
+            transition: all 0.4s ease;
+        }
+
+        .testimonial-card:hover {
+            transform: translateY(-10px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        .testimonial-avatar {
+            width: 90px;
+            height: 90px;
+            border-radius: 50%;
+            margin: 0 auto 2rem;
+            background: var(--gradient-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2.2rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-light);
+        }
+
+        .testimonial-text {
+            font-style: italic;
+            font-size: 1.2rem;
+            color: #475569;
+            margin-bottom: 2rem;
+            line-height: 1.7;
+            position: relative;
+        }
+
+        .testimonial-text::before {
+            content: '"';
+            font-size: 4rem;
+            color: var(--primary-color);
+            position: absolute;
+            top: -20px;
+            left: -10px;
+            opacity: 0.3;
+            font-family: serif;
+        }
+
+        .testimonial-author {
+            font-weight: 700;
+            color: var(--text-color);
+            font-size: 1.1rem;
+        }
+
+        .testimonial-role {
+            color: #64748b;
+            font-size: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* CTA SECTION */
+        .final-cta-section {
+            padding: 140px 0;
+            background: var(--gradient-blue);
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .final-cta-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(245, 158, 11, 0.2), transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.15), transparent 50%);
+        }
+
+        .lead-form {
+            background: white;
+            border-radius: 28px;
+            padding: 4rem;
+            box-shadow: var(--shadow-xl);
+            max-width: 650px;
+            margin: 0 auto;
+            color: var(--text-color);
+            position: relative;
+            z-index: 2;
+        }
+
+        .lead-form h3 {
+            color: var(--text-color);
+            margin-bottom: 2.5rem;
+            font-weight: 800;
+            font-size: 2rem;
+        }
+
+        .form-control {
+            border-radius: 15px;
+            border: 2px solid #e2e8f0;
+            padding: 18px 24px;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            background: #f8fafc;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+            background: white;
+        }
+
+        .btn-submit {
+            background: var(--gradient-blue);
+            border: none;
+            color: white;
+            padding: 20px 50px;
+            border-radius: 60px;
+            font-weight: 700;
+            width: 100%;
+            font-size: 1.3rem;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-light);
+        }
+
+        .btn-submit:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow-medium);
+        }
+
+        /* FLOATING ELEMENTS */
+        .floating-shape {
+            position: absolute;
+            opacity: 0.1;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .floating-shape.shape-1 {
+            top: 10%;
+            right: 10%;
+            width: 120px;
+            height: 120px;
+            background: white;
+            border-radius: 50%;
+            animation-delay: 0s;
+        }
+
+        .floating-shape.shape-2 {
+            bottom: 20%;
+            left: 5%;
+            width: 180px;
+            height: 180px;
+            background: white;
+            border-radius: 30px;
+            animation-delay: 3s;
+        }
+
+        .floating-shape.shape-3 {
+            top: 40%;
+            left: 85%;
+            width: 100px;
+            height: 100px;
+            background: white;
+            transform: rotate(45deg);
+            animation-delay: 6s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(5deg); }
+            66% { transform: translateY(-10px) rotate(-5deg); }
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            .hero-title {
+                font-size: 2.8rem;
+            }
+            
+            .hero-subtitle {
+                font-size: 1.2rem;
+            }
+            
+            .hero-stats {
+                gap: 2rem;
+                justify-content: center;
+            }
+            
+            .cta-buttons {
+                justify-content: center;
+            }
+            
+            .btn-cta-primary,
+            .btn-cta-secondary {
+                padding: 16px 35px;
+                font-size: 1.1rem;
+            }
+            
+            .section-title {
+                font-size: 2.5rem;
+            }
+            
+            .feature-card,
+            .testimonial-card {
+                margin-bottom: 2rem;
+            }
+            
+            .lead-form {
+                margin: 2rem 1rem;
+                padding: 3rem 2rem;
+            }
+            
+            .pricing-cards {
+                flex-direction: column;
+            }
+
+            .hero-phone-mockup {
+                width: 220px;
+                height: 400px;
+            }
+        }
+
+        /* ANIMATIONS */
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(60px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-slide-up {
+            animation: slideInUp 1s ease-out;
+        }
+
+        /* SCROLL ANIMATIONS */
+        [data-aos] {
+            pointer-events: none;
+        }
+        [data-aos].aos-animate {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-custom fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#home">
+                <i class="fas fa-gas-pump me-2"></i>
+                Rodo Stats
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Funcionalidades</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#how-it-works">Como Funciona</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#benefits">Benefícios</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#pricing">Preços</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('fleet_demo') }}" style="color: #f59e0b !important; font-weight: 600;">
+                            <i class="fas fa-truck me-1"></i>Frotas
                         </a>
-                        <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg px-5">
-                            <i class="fas fa-sign-in-alt me-2"></i>Entrar
-                        </a>
-                    </div>
-                    <p class="mt-3 small">
-                        <span class="text-light">Já possui conta?</span> 
-                        <a href="{{ url_for('login') }}" class="text-info fw-bold text-decoration-none">Faça login</a>
-                    </p>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#contact">Contato</a>
+                    </li>
+                </ul>
+                <div class="d-flex ms-3">
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-sign-in-alt me-1"></i>Fazer Login
+                    </a>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
+                        <i class="fas fa-rocket me-1"></i>Grátis
+                    </a>
                 </div>
+            </div>
+        </div>
+    </nav>
 
-                <div class="text-center mt-5">
-                    <div class="card glass-effect">
-                        <div class="card-body">
-                            <h6 class="gradient-text mb-3">
-                                <i class="fas fa-heart me-2"></i>Desenvolvido por <a href="https://inovamentelabs.com.br" target="_blank" class="text-warning text-decoration-none fw-bold">InovaMente Labs</a>
-                            </h6>
-                            <div class="row text-center">
-                                <div class="col-4">
-                                    <div class="metric-value text-primary">100%</div>
-                                    <div class="metric-label">Gratuito</div>
+    <!-- Hero Section -->
+    <section id="home" class="hero-section">
+        <div class="floating-shape shape-1"></div>
+        <div class="floating-shape shape-2"></div>
+        <div class="floating-shape shape-3"></div>
+        
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-7">
+                    <div class="hero-content" data-aos="fade-right">
+                        <div class="hero-badge">
+                            <i class="fas fa-sparkles me-2"></i>
+                            Powered by Google Gemini AI
+                        </div>
+                        
+                        <h1 class="hero-title">
+                            Controle Inteligente de<br>
+                            <span style="background: linear-gradient(45deg, #fbbf24, #f59e0b); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Combustível</span>
+                        </h1>
+                        
+                        <p class="hero-subtitle">
+                            Revolucione a gestão do seu combustível com inteligência artificial. 
+                            Processe cupons fiscais automaticamente, analise custos em tempo real 
+                            e economize até <strong>R$ 500 por mês</strong> com insights inteligentes.
+                        </p>
+                        
+                        <div class="hero-stats">
+                            <div class="hero-stat">
+                                <span class="hero-stat-number">98%</span>
+                                <span class="hero-stat-label">Precisão IA</span>
+                            </div>
+                            <div class="hero-stat">
+                                <span class="hero-stat-number">30s</span>
+                                <span class="hero-stat-label">Setup</span>
+                            </div>
+                            <div class="hero-stat">
+                                <span class="hero-stat-number">24/7</span>
+                                <span class="hero-stat-label">Monitoramento</span>
+                            </div>
+                        </div>
+                        
+                        <div class="cta-buttons">
+                            <a href="{{ url_for('dashboard') }}" class="btn-cta-primary">
+                                <i class="fas fa-rocket me-2"></i>
+                                Começar Grátis
+                            </a>
+                            <a href="{{ url_for('fleet_demo') }}" class="btn-cta-secondary">
+                                <i class="fas fa-truck me-2"></i>
+                                Sou Empresa
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5" data-aos="fade-left">
+                    <div class="hero-visual">
+                        <div class="hero-phone-mockup">
+                            <div class="phone-screen">
+                                <div class="screen-header">
+                                    <i class="fas fa-gas-pump"></i>
+                                    <span>Rodo Stats</span>
+                                    <i class="fas fa-user-circle"></i>
                                 </div>
-                                <div class="col-4">
-                                    <div class="metric-value text-success">∞</div>
-                                    <div class="metric-label">Veículos</div>
-                                </div>
-                                <div class="col-4">
-                                    <div class="metric-value text-info">24/7</div>
-                                    <div class="metric-label">Disponível</div>
+                                <div class="screen-stats">
+                                    <div class="mini-stat">
+                                        <div class="mini-stat-value">R$ 1.2K</div>
+                                        <div>Gasto Mensal</div>
+                                    </div>
+                                    <div class="mini-stat">
+                                        <div class="mini-stat-value">14.2</div>
+                                        <div>Km/L Médio</div>
+                                    </div>
+                                    <div class="mini-stat">
+                                        <div class="mini-stat-value">-18%</div>
+                                        <div>Economia</div>
+                                    </div>
+                                    <div class="mini-stat">
+                                        <div class="mini-stat-value">45</div>
+                                        <div>Abastecimentos</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -100,83 +1106,778 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </section>
 
-<!-- Background Animation -->
-<div class="position-fixed top-0 start-0 w-100 h-100" style="z-index: -1; opacity: 0.1;">
-    <div class="floating-shapes">
-        <div class="shape shape-1"></div>
-        <div class="shape shape-2"></div>
-        <div class="shape shape-3"></div>
-        <div class="shape shape-4"></div>
-    </div>
-</div>
+    <!-- Features Section -->
+    <section id="features" class="features-section">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="section-badge">
+                    <i class="fas fa-star me-2"></i>
+                    Funcionalidades Revolucionárias
+                </div>
+                <h2 class="section-title">Por que Escolher o Rodo Stats?</h2>
+                <p class="section-subtitle">
+                    Descubra como nossa inteligência artificial transforma o controle de combustível 
+                    em uma experiência simples, precisa e altamente econômica para você e sua família
+                </p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3 class="feature-title">IA Google Gemini</h3>
+                        <p class="feature-description">
+                            Simplesmente fotografe seu cupom fiscal ou a bomba de combustível. 
+                            Nossa IA extrai automaticamente todos os dados com 98% de precisão - 
+                            nunca mais digite nada manualmente!
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="200">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="feature-title">Análises Inteligentes</h3>
+                        <p class="feature-description">
+                            Descubra onde economizar mais! Alertas automáticos sobre postos caros, 
+                            previsões de gastos mensais e sugestões personalizadas para reduzir 
+                            até 30% dos seus custos.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="300">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-mobile-alt"></i>
+                        </div>
+                        <h3 class="feature-title">App Nativo PWA</h3>
+                        <p class="feature-description">
+                            Funciona offline, sincroniza quando conecta e pode ser instalado 
+                            como app nativo. Interface otimizada para uso com uma mão 
+                            enquanto você abastece.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="400">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cars"></i>
+                        </div>
+                        <h3 class="feature-title">Múltiplos Veículos</h3>
+                        <p class="feature-description">
+                            Controle quantos carros, motos ou veículos quiser em uma única conta. 
+                            Histórico individual, comparação de consumo e relatórios separados 
+                            para cada veículo da família.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="500">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-wrench"></i>
+                        </div>
+                        <h3 class="feature-title">Manutenção Inteligente</h3>
+                        <p class="feature-description">
+                            Nunca mais esqueça da troca de óleo! Lembretes automáticos baseados 
+                            em quilometragem, alertas de revisões e histórico completo de 
+                            manutenções para cada veículo.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4 col-md-6" data-aos="fade-up" data-aos-delay="600">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <h3 class="feature-title">Segurança Total</h3>
+                        <p class="feature-description">
+                            Seus dados ficam seguros com criptografia de ponta a ponta, 
+                            backups automáticos em nuvem e total conformidade com a LGPD. 
+                            Privacidade garantida!
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-<style>
-.floating-shapes {
-    position: relative;
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-}
+    <!-- How It Works -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="section-badge">
+                    <i class="fas fa-magic me-2"></i>
+                    Simplicidade Total
+                </div>
+                <h2 class="section-title">Como Funciona</h2>
+                <p class="section-subtitle">
+                    Apenas três passos simples para transformar completamente seu controle de combustível
+                </p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="step-card">
+                        <div class="step-number">1</div>
+                        <h3 class="step-title">📸 Fotografe</h3>
+                        <p class="step-description">
+                            Tire uma foto do cupom fiscal ou da bomba de combustível no posto. 
+                            Pode ser de qualquer ângulo - nossa IA é super inteligente!
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="step-card">
+                        <div class="step-number">2</div>
+                        <h3 class="step-title">🤖 IA Processa</h3>
+                        <p class="step-description">
+                            Em segundos, o Google Gemini extrai automaticamente preço, quantidade, 
+                            posto, tipo de combustível e todos os dados importantes.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="step-card">
+                        <div class="step-number">3</div>
+                        <h3 class="step-title">💡 Economize</h3>
+                        <p class="step-description">
+                            Receba insights inteligentes, alertas de economia e sugestões 
+                            personalizadas para reduzir seus gastos mensais com combustível.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-.shape {
-    position: absolute;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-    border-radius: 50%;
-    animation: float 20s infinite linear;
-}
+    <!-- Benefits Section -->
+    <section id="benefits" class="benefits-section">
+        <div class="container">
+            <div class="text-center mb-5" data-aos="fade-up">
+                <h2 class="display-4 fw-bold mb-4">Economia Real Comprovada</h2>
+                <p class="lead">
+                    Veja como nossos usuários estão economizando centenas de reais por mês
+                </p>
+            </div>
+            
+            <div class="row g-4 benefits-grid">
+                <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="100">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-piggy-bank"></i>
+                        </div>
+                        <h4 class="benefit-title">R$ 500/mês</h4>
+                        <p class="benefit-description">Economia média dos nossos usuários identificando postos mais baratos</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="200">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h4 class="benefit-title">5min/semana</h4>
+                        <p class="benefit-description">Tempo total gasto controlando combustível - o resto é automático</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="300">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h4 class="benefit-title">30% menos</h4>
+                        <p class="benefit-description">Redução média nos gastos após 3 meses usando nossas sugestões</p>
+                    </div>
+                </div>
+                
+                <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="400">
+                    <div class="benefit-item">
+                        <div class="benefit-icon">
+                            <i class="fas fa-leaf"></i>
+                        </div>
+                        <h4 class="benefit-title">Sustentável</h4>
+                        <p class="benefit-description">Consuma de forma mais consciente e reduza sua pegada de carbono</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-.shape-1 {
-    width: 80px;
-    height: 80px;
-    top: 20%;
-    left: 10%;
-    animation-delay: 0s;
-}
+    <!-- Cross-promotion Section -->
+    <section class="cross-promotion">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-lg-8" data-aos="fade-right">
+                    <h2 class="display-4 fw-bold mb-4">Tem uma Empresa ou Frota?</h2>
+                    <p class="lead mb-4">
+                        Descobra nosso Rodo Stats Frotas - solução empresarial completa para 
+                        gestão inteligente de frotas de caminhões, ônibus e veículos corporativos.
+                    </p>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-users text-warning me-3" style="font-size: 1.5rem;"></i>
+                                <span>Gestão de motoristas e equipes</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-chart-pie text-warning me-3" style="font-size: 1.5rem;"></i>
+                                <span>Dashboard executivo avançado</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-building text-warning me-3" style="font-size: 1.5rem;"></i>
+                                <span>Multi-filiais e centrais</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-link text-warning me-3" style="font-size: 1.5rem;"></i>
+                                <span>Integração com ERP empresarial</span>
+                            </div>
+                        </div>
+                    </div>
+                    <a href="{{ url_for('fleet_demo') }}" class="btn-fleet">
+                        <i class="fas fa-truck me-2"></i>
+                        Conhecer Rodo Stats Frotas
+                    </a>
+                </div>
+                <div class="col-lg-4 text-center" data-aos="fade-left">
+                    <div class="promo-card">
+                        <div class="promo-icon">
+                            <i class="fas fa-truck"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">Rodo Stats Frotas</h4>
+                        <p class="mb-3">Economize até 25% dos custos da sua frota empresarial</p>
+                        <div class="text-warning fw-bold">A partir de R$ 199/mês</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-.shape-2 {
-    width: 120px;
-    height: 120px;
-    top: 60%;
-    right: 10%;
-    animation-delay: 5s;
-}
+    <!-- Pricing Section -->
+    <section id="pricing" class="pricing-section">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="section-badge">
+                    <i class="fas fa-tags me-2"></i>
+                    Planos Flexíveis
+                </div>
+                <h2 class="section-title">Escolha Seu Plano</h2>
+                <p class="section-subtitle">
+                    Soluções perfeitas para pessoas físicas, famílias e pequenos negócios
+                </p>
+                
+                <div class="pricing-toggle">
+                    <div class="toggle-option active" data-target="personal">
+                        <i class="fas fa-user me-2"></i>Pessoa Física
+                    </div>
+                    <div class="toggle-option" data-target="business">
+                        <i class="fas fa-briefcase me-2"></i>Pequenos Negócios
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Personal Plans -->
+            <div class="pricing-cards active" id="personal-plans">
+                <div class="pricing-card" data-aos="fade-up" data-aos-delay="100">
+                    <h3 style="color: var(--primary-color); font-size: 1.8rem; font-weight: 700;">Básico</h3>
+                    <div class="price" style="margin: 1.5rem 0;">
+                        <span style="font-size: 3.5rem; font-weight: 900; color: var(--primary-color);">Grátis</span>
+                        <div style="font-size: 0.9rem; color: #64748b; margin-top: 0.5rem;">Para sempre</div>
+                    </div>
+                    <ul class="list-unstyled mt-4" style="text-align: left;">
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>1 Veículo</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Processamento IA básico</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Relatórios simples</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>App mobile</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Suporte por email</li>
+                    </ul>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-primary mt-3" style="width: 100%; padding: 15px; font-weight: 600;">Começar Grátis</a>
+                </div>
+                
+                <div class="pricing-card popular" data-aos="fade-up" data-aos-delay="200">
+                    <h3 style="color: var(--primary-color); font-size: 1.8rem; font-weight: 700;">Pro</h3>
+                    <div class="price" style="margin: 1.5rem 0;">
+                        <span style="font-size: 3.5rem; font-weight: 900; color: var(--primary-color);">R$ 19</span>
+                        <span style="font-size: 1.2rem; color: #64748b;">/mês</span>
+                        <div style="font-size: 0.9rem; color: #64748b; margin-top: 0.5rem;">Primeiro mês grátis</div>
+                    </div>
+                    <ul class="list-unstyled mt-4" style="text-align: left;">
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Veículos ilimitados</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>IA avançada Google Gemini</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Análises preditivas</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Alertas de economia</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Exportação de dados</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Suporte prioritário</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-primary mt-3" style="width: 100%; padding: 15px; font-weight: 600;">Assinar Pro</a>
+                </div>
+                
+                <div class="pricing-card" data-aos="fade-up" data-aos-delay="300">
+                    <h3 style="color: var(--primary-color); font-size: 1.8rem; font-weight: 700;">Família</h3>
+                    <div class="price" style="margin: 1.5rem 0;">
+                        <span style="font-size: 3.5rem; font-weight: 900; color: var(--primary-color);">R$ 39</span>
+                        <span style="font-size: 1.2rem; color: #64748b;">/mês</span>
+                        <div style="font-size: 0.9rem; color: #64748b; margin-top: 0.5rem;">Até 5 membros</div>
+                    </div>
+                    <ul class="list-unstyled mt-4" style="text-align: left;">
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Tudo do Pro</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Compartilhamento familiar</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Relatórios consolidados</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Metas familiares</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Consultoria mensal</li>
+                    </ul>
+                    <a href="#contact" class="btn btn-outline-primary mt-3" style="width: 100%; padding: 15px; font-weight: 600;">Falar com Vendas</a>
+                </div>
+            </div>
+            
+            <!-- Business Plans -->
+            <div class="pricing-cards" id="business-plans">
+                <div class="pricing-card" data-aos="fade-up" data-aos-delay="100">
+                    <h3 style="color: var(--primary-color); font-size: 1.8rem; font-weight: 700;">Pequenos Negócios</h3>
+                    <div class="price" style="margin: 1.5rem 0;">
+                        <span style="font-size: 3.5rem; font-weight: 900; color: var(--primary-color);">R$ 99</span>
+                        <span style="font-size: 1.2rem; color: #64748b;">/mês</span>
+                        <div style="font-size: 0.9rem; color: #64748b; margin-top: 0.5rem;">Até 10 veículos</div>
+                    </div>
+                    <ul class="list-unstyled mt-4" style="text-align: left;">
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Dashboard gerencial</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Relatórios fiscais</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Controle de motoristas</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>API básica</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Suporte dedicado</li>
+                    </ul>
+                    <a href="{{ url_for('fleet_demo') }}" class="btn btn-primary mt-3" style="width: 100%; padding: 15px; font-weight: 600;">Teste Grátis</a>
+                </div>
+                
+                <div class="pricing-card popular" data-aos="fade-up" data-aos-delay="200">
+                    <h3 style="color: var(--primary-color); font-size: 1.8rem; font-weight: 700;">Empresarial</h3>
+                    <div class="price" style="margin: 1.5rem 0;">
+                        <span style="font-size: 2.5rem; font-weight: 900; color: var(--primary-color);">Personalizado</span>
+                        <div style="font-size: 0.9rem; color: #64748b; margin-top: 0.5rem;">A partir de R$ 199/mês</div>
+                    </div>
+                    <ul class="list-unstyled mt-4" style="text-align: left;">
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Veículos ilimitados</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Integração ERP</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Multi-filiais</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>BI avançado</li>
+                        <li class="mb-3"><i class="fas fa-check text-success me-3"></i>Gerente de conta</li>
+                    </ul>
+                    <a href="{{ url_for('fleet_demo') }}" class="btn btn-primary mt-3" style="width: 100%; padding: 15px; font-weight: 600;">Solicitar Proposta</a>
+                </div>
+            </div>
+        </div>
+    </section>
 
-.shape-3 {
-    width: 60px;
-    height: 60px;
-    top: 80%;
-    left: 20%;
-    animation-delay: 10s;
-}
+    <!-- Testimonials -->
+    <section class="testimonials-section">
+        <div class="container">
+            <div class="section-header" data-aos="fade-up">
+                <div class="section-badge">
+                    <i class="fas fa-heart me-2"></i>
+                    Adorado pelos Usuários
+                </div>
+                <h2 class="section-title">Histórias Reais de Economia</h2>
+                <p class="section-subtitle">
+                    Conheça pessoas que transformaram seu controle de combustível e estão economizando centenas de reais
+                </p>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="100">
+                    <div class="testimonial-card">
+                        <div class="testimonial-avatar">MR</div>
+                        <p class="testimonial-text">
+                            Incrível! Em 3 meses economizei R$ 1.240 só escolhendo os postos mais baratos. 
+                            O app me avisa quando estou gastando demais e sugere alternativas próximas.
+                        </p>
+                        <div class="testimonial-author">Maria Rodriguez</div>
+                        <div class="testimonial-role">Representante Comercial - São Paulo</div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="200">
+                    <div class="testimonial-card">
+                        <div class="testimonial-avatar">JS</div>
+                        <p class="testimonial-text">
+                            Como uber, preciso controlar cada centavo. O Rodo Stats me mostrou que 
+                            eu estava perdendo R$ 400/mês em rotas ineficientes. Agora sou mais estratégico!
+                        </p>
+                        <div class="testimonial-author">João Silva</div>
+                        <div class="testimonial-role">Motorista de App - Rio de Janeiro</div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4" data-aos="fade-up" data-aos-delay="300">
+                    <div class="testimonial-card">
+                        <div class="testimonial-avatar">AP</div>
+                        <p class="testimonial-text">
+                            Uso para controlar os 3 carros da família. Os relatórios mensais são 
+                            perfeitos para o orçamento doméstico. As crianças agora também se preocupam com economia!
+                        </p>
+                        <div class="testimonial-author">Ana Paula</div>
+                        <div class="testimonial-role">Mãe e Empresária - Brasília</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
 
-.shape-4 {
-    width: 100px;
-    height: 100px;
-    top: 10%;
-    right: 30%;
-    animation-delay: 15s;
-}
+    <!-- Final CTA Section -->
+    <section id="contact" class="final-cta-section">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6 d-flex align-items-center" data-aos="fade-right">
+                    <div style="position: relative; z-index: 2;">
+                        <h2 class="display-4 fw-bold mb-4">
+                            Pronto para Economizar Centenas de Reais por Mês?
+                        </h2>
+                        <p class="lead mb-4">
+                            Junte-se a mais de <strong>50.000 brasileiros</strong> que já transformaram 
+                            seu controle de combustível e estão economizando uma verdadeira fortuna!
+                        </p>
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-rocket me-3" style="font-size: 1.5rem; color: #10b981;"></i>
+                                <span style="font-size: 1.1rem;">Setup em menos de 30 segundos</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-shield-alt me-3" style="font-size: 1.5rem; color: #10b981;"></i>
+                                <span style="font-size: 1.1rem;">100% seguro e privado (LGPD)</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-gift me-3" style="font-size: 1.5rem; color: #10b981;"></i>
+                                <span style="font-size: 1.1rem;">Grátis para sempre + primeiro mês Pro grátis</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fas fa-headset me-3" style="font-size: 1.5rem; color: #10b981;"></i>
+                                <span style="font-size: 1.1rem;">Suporte brasileiro 24/7</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6" data-aos="fade-left">
+                    <form class="lead-form" method="POST" action="{{ url_for('capture_lead') }}">
+                        <h3><i class="fas fa-sparkles me-2"></i>Comece a Economizar Hoje!</h3>
+                        <div class="mb-3">
+                            <input type="text" class="form-control" name="nome" placeholder="Seu nome completo" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="email" class="form-control" name="email" placeholder="Seu melhor email" required>
+                        </div>
+                        <div class="mb-3">
+                            <input type="tel" class="form-control" name="telefone" placeholder="WhatsApp (11) 99999-9999" required>
+                        </div>
+                        <div class="mb-3">
+                            <select class="form-control" name="empresa_tamanho" required>
+                                <option value="">Quantos veículos você tem?</option>
+                                <option value="1 veículo">1 veículo (carro/moto)</option>
+                                <option value="2-3 veículos">2-3 veículos (família)</option>
+                                <option value="4-10 veículos">4-10 veículos (pequeno negócio)</option>
+                                <option value="Mais de 10 veículos">Mais de 10 veículos (empresa)</option>
+                            </select>
+                        </div>
+                        <div class="mb-4">
+                            <textarea class="form-control" name="mensagem" rows="3" placeholder="Conte-nos qual é seu maior desafio com combustível hoje (opcional)"></textarea>
+                        </div>
+                        <button type="submit" class="btn-submit">
+                            <i class="fas fa-magic me-2"></i>
+                            Começar a Economizar Grátis
+                        </button>
+                        <p class="text-muted mt-3 mb-0 text-center" style="font-size: 0.9rem;">
+                            🎉 <strong>Oferta especial:</strong> Primeiro mês Pro totalmente grátis!<br>
+                            🔒 Seus dados estão seguros - política de privacidade rigorosa
+                        </p>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
 
-@keyframes float {
-    0% {
-        transform: translateY(0px) rotate(0deg);
-        opacity: 0.7;
-    }
-    33% {
-        transform: translateY(-30px) rotate(120deg);
-        opacity: 0.4;
-    }
-    66% {
-        transform: translateY(30px) rotate(240deg);
-        opacity: 0.7;
-    }
-    100% {
-        transform: translateY(0px) rotate(360deg);
-        opacity: 0.7;
-    }
-}
-</style>
-{% endblock %}
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <h5 class="fw-bold mb-3">
+                        <i class="fas fa-gas-pump me-2"></i>
+                        Rodo Stats
+                    </h5>
+                    <p class="text-light mb-4">
+                        A revolução no controle inteligente de combustível para pessoas físicas. 
+                        Economize centenas de reais mensalmente com nossa IA.
+                    </p>
+                    <div class="d-flex gap-3">
+                        <a href="#" class="text-light"><i class="fab fa-instagram fa-lg"></i></a>
+                        <a href="#" class="text-light"><i class="fab fa-facebook fa-lg"></i></a>
+                        <a href="#" class="text-light"><i class="fab fa-youtube fa-lg"></i></a>
+                        <a href="#" class="text-light"><i class="fab fa-tiktok fa-lg"></i></a>
+                    </div>
+                </div>
+                <div class="col-lg-2 mb-4">
+                    <h6 class="fw-bold mb-3">Produto</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#features" class="text-light">Funcionalidades</a></li>
+                        <li><a href="#pricing" class="text-light">Preços</a></li>
+                        <li><a href="{{ url_for('dashboard') }}" class="text-light">App Grátis</a></li>
+                        <li><a href="{{ url_for('fleet_demo') }}" class="text-light">Rodo Stats Frotas</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 mb-4">
+                    <h6 class="fw-bold mb-3">Recursos</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-light">Blog</a></li>
+                        <li><a href="#" class="text-light">Guias de Economia</a></li>
+                        <li><a href="#" class="text-light">Calculadora de Economia</a></li>
+                        <li><a href="#" class="text-light">Dicas de Consumo</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 mb-4">
+                    <h6 class="fw-bold mb-3">Suporte</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-light">Central de Ajuda</a></li>
+                        <li><a href="#" class="text-light">WhatsApp</a></li>
+                        <li><a href="#" class="text-light">Tutorial</a></li>
+                        <li><a href="#" class="text-light">FAQ</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 mb-4">
+                    <h6 class="fw-bold mb-3">Legal</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-light">Privacidade</a></li>
+                        <li><a href="#" class="text-light">Termos de Uso</a></li>
+                        <li><a href="#" class="text-light">LGPD</a></li>
+                        <li><a href="#" class="text-light">Cookies</a></li>
+                    </ul>
+                </div>
+            </div>
+            <hr style="border-color: #374151;">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="mb-0 text-light">
+                        © 2024 Rodo Stats - Desenvolvido com ❤️ por 
+                        <strong style="color: white;">InovaMente Labs</strong>
+                    </p>
+                </div>
+                <div class="col-md-6 text-end">
+                    <p class="mb-0 text-light">
+                        <i class="fas fa-map-marker-alt me-1"></i>
+                        São Paulo, Brasil 🇧🇷
+                    </p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+    
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 1000,
+            easing: 'ease-in-out-cubic',
+            once: true,
+            mirror: false,
+            offset: 100
+        });
+
+        // Smooth scrolling
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // Pricing toggle
+        const toggleOptions = document.querySelectorAll('.toggle-option');
+        const pricingCards = document.querySelectorAll('.pricing-cards');
+        
+        toggleOptions.forEach(option => {
+            option.addEventListener('click', () => {
+                // Remove active from all options
+                toggleOptions.forEach(opt => opt.classList.remove('active'));
+                // Add active to clicked option
+                option.classList.add('active');
+                
+                // Hide all pricing cards
+                pricingCards.forEach(card => card.classList.remove('active'));
+                // Show selected pricing cards
+                const target = option.getAttribute('data-target');
+                document.getElementById(target + '-plans').classList.add('active');
+            });
+        });
+
+        // Enhanced navbar background on scroll
+        window.addEventListener('scroll', function() {
+            const navbar = document.querySelector('.navbar-custom');
+            if (window.scrollY > 100) {
+                navbar.style.background = 'rgba(255,255,255,0.98)';
+                navbar.style.boxShadow = '0 4px 30px rgba(0,0,0,0.15)';
+                navbar.style.backdropFilter = 'blur(25px)';
+            } else {
+                navbar.style.background = 'rgba(255,255,255,0.95)';
+                navbar.style.boxShadow = '0 1px 10px rgba(0,0,0,0.05)';
+                navbar.style.backdropFilter = 'blur(20px)';
+            }
+        });
+
+        // Enhanced counter animation
+        function animateCounters() {
+            const counters = document.querySelectorAll('.hero-stat-number');
+            counters.forEach(counter => {
+                const target = counter.innerText;
+                
+                if (target.includes('%')) {
+                    const num = parseInt(target);
+                    let count = 0;
+                    const increment = num / 60;
+                    const timer = setInterval(() => {
+                        count += increment;
+                        if (count >= num) {
+                            counter.innerText = num + '%';
+                            clearInterval(timer);
+                        } else {
+                            counter.innerText = Math.ceil(count) + '%';
+                        }
+                    }, 25);
+                } else if (target.includes('s')) {
+                    const num = parseInt(target);
+                    let count = 0;
+                    const increment = num / 40;
+                    const timer = setInterval(() => {
+                        count += increment;
+                        if (count >= num) {
+                            counter.innerText = num + 's';
+                            clearInterval(timer);
+                        } else {
+                            counter.innerText = Math.ceil(count) + 's';
+                        }
+                    }, 30);
+                }
+            });
+        }
+
+        // Trigger animation when hero section is visible
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounters();
+                    observer.disconnect();
+                }
+            });
+        });
+
+        const heroSection = document.querySelector('.hero-section');
+        if (heroSection) {
+            observer.observe(heroSection);
+        }
+
+        // Enhanced form validation and feedback
+        const leadForm = document.querySelector('.lead-form');
+        if (leadForm) {
+            leadForm.addEventListener('submit', function(e) {
+                const submitBtn = this.querySelector('.btn-submit');
+                const originalText = submitBtn.innerHTML;
+                
+                // Add loading state with better animation
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enviando sua solicitação...';
+                submitBtn.disabled = true;
+                submitBtn.style.background = 'linear-gradient(45deg, #10b981, #059669)';
+                
+                // Success feedback simulation
+                setTimeout(() => {
+                    submitBtn.innerHTML = '<i class="fas fa-check me-2"></i>Enviado com sucesso!';
+                    submitBtn.style.background = 'linear-gradient(45deg, #10b981, #059669)';
+                }, 2000);
+                
+                // Reset after showing success
+                setTimeout(() => {
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                    submitBtn.style.background = '';
+                }, 4000);
+            });
+
+            // Enhanced form field animations
+            const formInputs = leadForm.querySelectorAll('.form-control');
+            formInputs.forEach(input => {
+                input.addEventListener('focus', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 8px 25px rgba(37, 99, 235, 0.15)';
+                });
+                
+                input.addEventListener('blur', function() {
+                    this.style.transform = '';
+                    this.style.boxShadow = '';
+                });
+            });
+        }
+
+        // Add subtle parallax effect to hero section
+        window.addEventListener('scroll', function() {
+            const scrolled = window.pageYOffset;
+            const heroContent = document.querySelector('.hero-content');
+            const heroVisual = document.querySelector('.hero-visual');
+            
+            if (heroContent && scrolled < window.innerHeight) {
+                heroContent.style.transform = `translateY(${scrolled * 0.1}px)`;
+                if (heroVisual) {
+                    heroVisual.style.transform = `translateY(${scrolled * -0.05}px)`;
+                }
+            }
+        });
+
+        // Add mouse movement effect to feature cards
+        document.querySelectorAll('.feature-card').forEach(card => {
+            card.addEventListener('mouseenter', function() {
+                this.style.transform = 'translateY(-15px) rotateX(5deg)';
+                this.style.transition = 'all 0.3s ease';
+            });
+            
+            card.addEventListener('mouseleave', function() {
+                this.style.transform = '';
+            });
+        });
+
+        // Phone mockup interactive animation
+        const phoneMockup = document.querySelector('.hero-phone-mockup');
+        if (phoneMockup) {
+            setInterval(() => {
+                const miniStats = document.querySelectorAll('.mini-stat-value');
+                miniStats.forEach(stat => {
+                    const currentValue = stat.textContent;
+                    stat.style.transform = 'scale(1.1)';
+                    stat.style.color = '#f59e0b';
+                    
+                    setTimeout(() => {
+                        stat.style.transform = '';
+                        stat.style.color = '#10b981';
+                    }, 500);
+                });
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

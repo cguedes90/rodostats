@@ -479,7 +479,7 @@ def calculate_fuel_efficiency(vehicle_id):
 
 @app.route('/')
 def index():
-    """Pagina inicial"""
+    """Landing page do Rodo Stats"""
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
     return render_template('index.html')
@@ -649,6 +649,7 @@ def reset_password(token):
     
     return render_template('reset_password.html', token=token)
 
+@app.route('/app')
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -656,80 +657,106 @@ def dashboard():
     print(f"[DASHBOARD] Usuário autenticado: {current_user.is_authenticated}")
     print(f"[DASHBOARD] ID do usuário: {current_user.get_id() if current_user.is_authenticated else 'None'}")
     
+    # Processar filtros da URL
+    selected_vehicle = request.args.get('vehicle_id', type=int)
+    selected_days = request.args.get('days', type=int)
+    
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
+    
+    # Construir query base considerando filtros
+    base_query = FuelRecord.query.join(Vehicle).filter(Vehicle.user_id == current_user.id)
+    
+    if selected_vehicle:
+        base_query = base_query.filter(FuelRecord.vehicle_id == selected_vehicle)
+    
+    if selected_days:
+        cutoff_date = datetime.now() - timedelta(days=selected_days)
+        base_query = base_query.filter(FuelRecord.date >= cutoff_date.date())
     
     # Estatisticas gerais
     total_vehicles = len(vehicles)
-    total_records = FuelRecord.query.join(Vehicle).filter(Vehicle.user_id == current_user.id).count()
+    total_records = base_query.count()
     
-    # Ultimos abastecimentos
-    recent_records = FuelRecord.query.join(Vehicle).filter(
-        Vehicle.user_id == current_user.id
-    ).order_by(FuelRecord.date.desc()).limit(5).all()
+    # Ultimos abastecimentos (considerando filtros)
+    recent_records = base_query.order_by(FuelRecord.date.desc()).limit(5).all()
     
-    # Gastos do mes atual
-    current_month = datetime.now().replace(day=1)
-    monthly_expense = db.session.query(db.func.sum(FuelRecord.total_cost)).join(Vehicle).filter(
-        Vehicle.user_id == current_user.id,
-        FuelRecord.date >= current_month
-    ).scalar() or 0
+    # Gastos (considerando filtros)
+    if selected_days:
+        # Se há filtro de período, usar esse período
+        cutoff_date = datetime.now() - timedelta(days=selected_days)
+        monthly_expense = base_query.filter(FuelRecord.date >= cutoff_date.date()).with_entities(db.func.sum(FuelRecord.total_cost)).scalar() or 0
+    else:
+        # Senão, usar gasto do mês atual
+        current_month = datetime.now().replace(day=1)
+        monthly_query = base_query.filter(FuelRecord.date >= current_month)
+        monthly_expense = monthly_query.with_entities(db.func.sum(FuelRecord.total_cost)).scalar() or 0
     
-    # Total gasto (todos os tempos)
-    total_spent = db.session.query(db.func.sum(FuelRecord.total_cost)).join(Vehicle).filter(
-        Vehicle.user_id == current_user.id
-    ).scalar() or 0
+    # Total gasto (considerando filtros)
+    total_spent = base_query.with_entities(db.func.sum(FuelRecord.total_cost)).scalar() or 0
     
-    # Total de litros
-    total_liters = db.session.query(db.func.sum(FuelRecord.liters)).join(Vehicle).filter(
-        Vehicle.user_id == current_user.id
-    ).scalar() or 0
+    # Total de litros (considerando filtros)
+    total_liters = base_query.with_entities(db.func.sum(FuelRecord.liters)).scalar() or 0
     
-    # Preço médio por litro
-    avg_price = db.session.query(db.func.avg(FuelRecord.price_per_liter)).join(Vehicle).filter(
-        Vehicle.user_id == current_user.id
-    ).scalar() or 0
+    # Preço médio por litro (considerando filtros)
+    avg_price = base_query.with_entities(db.func.avg(FuelRecord.price_per_liter)).scalar() or 0
     
-    # Posto favorito (mais frequente)
-    favorite_station_query = db.session.query(
-        FuelRecord.gas_station, 
-        db.func.count(FuelRecord.gas_station).label('count')
-    ).join(Vehicle).filter(
-        Vehicle.user_id == current_user.id,
+    # Posto favorito (considerando filtros)
+    favorite_station_query = base_query.filter(
         FuelRecord.gas_station.isnot(None),
         FuelRecord.gas_station != ''
+    ).with_entities(
+        FuelRecord.gas_station, 
+        db.func.count(FuelRecord.gas_station).label('count')
     ).group_by(FuelRecord.gas_station).order_by(db.text('count DESC')).first()
     
     favorite_station = favorite_station_query[0] if favorite_station_query else "Nenhum"
     
-    # Métricas de consumo
-    all_records = FuelRecord.query.join(Vehicle).filter(
-        Vehicle.user_id == current_user.id
-    ).order_by(FuelRecord.date).all()
+    # Métricas de consumo CORRIGIDAS
+    all_records = base_query.order_by(FuelRecord.vehicle_id, FuelRecord.date).all()
     
     total_km = 0
     consumptions = []
     km_last_30_days = 0
     thirty_days_ago = datetime.now() - timedelta(days=30)
     
-    if len(all_records) > 1:
-        for i in range(1, len(all_records)):
-            distance = all_records[i].odometer - all_records[i-1].odometer
-            if distance > 0:
-                total_km += distance
-                fuel = all_records[i].liters
-                if fuel > 0:
-                    consumption = distance / fuel
-                    consumptions.append(consumption)
-                
-                # Verificar se é dos últimos 30 dias
-                if all_records[i].date >= thirty_days_ago.date():
-                    km_last_30_days += distance
+    # Agrupar por veículo para calcular corretamente
+    vehicle_records = {}
+    for record in all_records:
+        if record.vehicle_id not in vehicle_records:
+            vehicle_records[record.vehicle_id] = []
+        vehicle_records[record.vehicle_id].append(record)
+    
+    # Calcular KM para cada veículo separadamente
+    for vehicle_id, records in vehicle_records.items():
+        if len(records) > 1:
+            # Ordenar por data para garantir sequência correta
+            records.sort(key=lambda x: x.date)
+            
+            for i in range(1, len(records)):
+                # Só calcular se tem odômetro válido
+                if records[i].odometer and records[i-1].odometer:
+                    distance = records[i].odometer - records[i-1].odometer
+                    
+                    # Validar distância (evitar valores absurdos)
+                    if 0 < distance <= 2000:  # Entre 0 e 2000 km por abastecimento
+                        total_km += distance
+                        
+                        # Calcular consumo se tiver litros
+                        if records[i].liters and records[i].liters > 0:
+                            consumption = distance / records[i].liters
+                            # Validar consumo (entre 3 e 25 km/l para ser realista)
+                            if 3 <= consumption <= 25:
+                                consumptions.append(consumption)
+                        
+                        # Verificar se é dos últimos 30 dias
+                        if records[i].date >= thirty_days_ago.date():
+                            km_last_30_days += distance
     
     consumption_metrics = {
-        'total_km': f"{total_km:.0f} km",
-        'average_consumption': f"{sum(consumptions)/len(consumptions):.1f}" if consumptions else "0.0",
-        'best_consumption': f"{max(consumptions):.1f}" if consumptions else "0.0",
-        'km_last_30_days': f"{km_last_30_days:.0f} km"
+        'total_km': f"{total_km:,.0f} km" if total_km > 0 else "0 km",
+        'average_consumption': f"{sum(consumptions)/len(consumptions):.1f}" if consumptions else "N/A",
+        'best_consumption': f"{max(consumptions):.1f}" if consumptions else "N/A",
+        'km_last_30_days': f"{km_last_30_days:,.0f} km" if km_last_30_days > 0 else "0 km"
     }
     
     # Preparar dados para graficos
@@ -782,14 +809,52 @@ def dashboard():
                          consumption_metrics=consumption_metrics,
                          chart_data=chart_data,
                          monthly_data=monthly_data,
-                         fuel_distribution=fuel_distribution)
+                         fuel_distribution=fuel_distribution,
+                         selected_vehicle=selected_vehicle,
+                         selected_days=selected_days)
 
 @app.route('/vehicles')
 @login_required
 def vehicles():
     """Lista de veiculos"""
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
-    return render_template('vehicles.html', vehicles=vehicles)
+    
+    # Calcular resumo da frota dos últimos 30 dias
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    # Buscar registros dos últimos 30 dias
+    recent_records = FuelRecord.query.join(Vehicle).filter(
+        Vehicle.user_id == current_user.id,
+        FuelRecord.date >= thirty_days_ago.date()
+    ).all()
+    
+    # Calcular métricas dos últimos 30 dias
+    fleet_summary = {
+        'total_vehicles': len(vehicles),
+        'total_records_30d': len(recent_records),
+        'total_spent_30d': sum(record.total_cost for record in recent_records) if recent_records else 0,
+        'total_liters_30d': sum(record.liters for record in recent_records) if recent_records else 0,
+        'avg_consumption_30d': 0
+    }
+    
+    # Calcular consumo médio dos últimos 30 dias
+    consumptions_30d = []
+    for vehicle in vehicles:
+        vehicle_records = [r for r in recent_records if r.vehicle_id == vehicle.id]
+        vehicle_records.sort(key=lambda x: x.date)
+        
+        for i in range(1, len(vehicle_records)):
+            if vehicle_records[i].odometer and vehicle_records[i-1].odometer:
+                distance = vehicle_records[i].odometer - vehicle_records[i-1].odometer
+                if 0 < distance <= 2000 and vehicle_records[i].liters > 0:
+                    consumption = distance / vehicle_records[i].liters
+                    if 3 <= consumption <= 25:
+                        consumptions_30d.append(consumption)
+    
+    if consumptions_30d:
+        fleet_summary['avg_consumption_30d'] = sum(consumptions_30d) / len(consumptions_30d)
+    
+    return render_template('vehicles.html', vehicles=vehicles, fleet_summary=fleet_summary)
 
 @app.route('/add_vehicle', methods=['GET', 'POST'])
 @login_required
@@ -1255,6 +1320,118 @@ def oil_delete(oil_id):
         flash(f'Erro ao excluir troca de óleo: {str(e)}', 'error')
     
     return redirect(url_for('oil_list'))
+
+# === ROTAS ESPECIAIS ===
+
+@app.route('/fleet-demo')
+def fleet_demo():
+    """Demo para frotas empresariais"""
+    return render_template('fleet_demo.html')
+
+@app.route('/capture-lead', methods=['POST'])
+def capture_lead():
+    """Captura leads do formulário da landing page"""
+    try:
+        nome = request.form.get('nome')
+        email = request.form.get('email')
+        telefone = request.form.get('telefone')
+        empresa_tamanho = request.form.get('empresa_tamanho')
+        mensagem = request.form.get('mensagem', '')
+        
+        # Enviar email para contato@inovamentelabs.com.br
+        send_lead_email(nome, email, telefone, empresa_tamanho, mensagem)
+        
+        flash('Obrigado pelo interesse! Entraremos em contato em breve.', 'success')
+        return redirect(url_for('landing_page'))
+        
+    except Exception as e:
+        print(f"[LEAD] Erro ao capturar lead: {str(e)}")
+        flash('Erro ao enviar formulário. Tente novamente.', 'error')
+        return redirect(url_for('landing_page'))
+
+def send_lead_email(nome, email, telefone, empresa_tamanho, mensagem):
+    """Envia email com informações do lead"""
+    try:
+        from datetime import datetime
+        
+        data_atual = datetime.now().strftime("%d/%m/%Y às %H:%M")
+        
+        html_content = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                <h2 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 10px;">
+                    🚗 Novo Lead - Rodo Stats
+                </h2>
+                
+                <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: #334155; margin-top: 0;">Informações do Interessado</h3>
+                    
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 8px; font-weight: bold; width: 30%;">Nome:</td>
+                            <td style="padding: 8px;">{nome}</td>
+                        </tr>
+                        <tr style="background: #ffffff;">
+                            <td style="padding: 8px; font-weight: bold;">Email:</td>
+                            <td style="padding: 8px;">{email}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; font-weight: bold;">Telefone:</td>
+                            <td style="padding: 8px;">{telefone}</td>
+                        </tr>
+                        <tr style="background: #ffffff;">
+                            <td style="padding: 8px; font-weight: bold;">Empresa/Frota:</td>
+                            <td style="padding: 8px;">{empresa_tamanho}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; font-weight: bold;">Data/Hora:</td>
+                            <td style="padding: 8px;">{data_atual}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                {f'''
+                <div style="background: #ffffff; border-left: 4px solid #2563eb; padding: 20px; margin: 20px 0;">
+                    <h4 style="color: #334155; margin-top: 0;">Mensagem:</h4>
+                    <p style="margin: 0; font-style: italic;">{mensagem}</p>
+                </div>
+                ''' if mensagem else ''}
+                
+                <div style="background: #e0f2fe; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                    <p style="margin: 0; font-size: 14px; color: #0277bd;">
+                        <strong>💡 Próximos passos sugeridos:</strong><br>
+                        • Responder em até 24 horas<br>
+                        • Agendar demo personalizada<br>
+                        • Apresentar funcionalidades específicas para o tipo de empresa
+                    </p>
+                </div>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;">
+                
+                <p style="color: #64748b; font-size: 12px; text-align: center; margin: 0;">
+                    Email gerado automaticamente pelo sistema Rodo Stats<br>
+                    © 2024 InovaMente Labs
+                </p>
+            </div>
+        </body>
+        </html>
+        """
+        
+        msg = Message(
+            "Captura de Lead RodoStats",
+            recipients=['contato@inovamentelabs.com.br'],
+            html=html_content,
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+        
+        mail.send(msg)
+        print(f"[LEAD] ✅ Email enviado com sucesso para contato@inovamentelabs.com.br")
+        return True
+        
+    except Exception as e:
+        print(f"[LEAD] ❌ Erro ao enviar email: {str(e)}")
+        return False
 
 # === TRATAMENTO DE ERROS ===
 
