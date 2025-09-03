@@ -1,0 +1,526 @@
+{% extends "base.html" %}
+
+{% block title %}Manutenção - RodoStats{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="gradient-text">
+            <i class="fas fa-tools me-2"></i>Controle de Manutenção
+        </h1>
+        <p class="text-muted">Gerencie todas as manutenções dos seus veículos em um só lugar</p>
+    </div>
+</div>
+
+<!-- Cards de Estatísticas -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-gradient-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">{{ stats.total_maintenance or 0 }}</h5>
+                        <p class="card-text small mb-0">Total Manutenções</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-wrench fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-gradient-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">{{ stats.pending_maintenance or 0 }}</h5>
+                        <p class="card-text small mb-0">Vencidas</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-exclamation-triangle fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-gradient-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">R$ {{ "%.2f"|format(stats.total_cost or 0) }}</h5>
+                        <p class="card-text small mb-0">Gasto Total</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card bg-gradient-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h5 class="card-title mb-0">{{ stats.by_voice or 0 }}</h5>
+                        <p class="card-text small mb-0">Por Voz</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-microphone fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Botões de Ação -->
+<div class="row mb-4">
+    <div class="col-12">
+        <button type="button" class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#maintenanceModal">
+            <i class="fas fa-plus me-2"></i>Nova Manutenção
+        </button>
+        <button type="button" class="btn btn-outline-success me-2" id="voiceBtn">
+            <i class="fas fa-microphone me-2"></i>Comando de Voz
+        </button>
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                <i class="fas fa-filter me-2"></i>Filtrar
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('all')">Todas</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('oil')">Óleo</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('filter_air')">Filtro de Ar</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('brakes')">Freios</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('tires')">Pneus</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('pending')">Vencidas</a></li>
+                <li><a class="dropdown-item" href="#" onclick="filterMaintenance('voice')">Registradas por Voz</a></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Manutenções -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="fas fa-list me-2"></i>Histórico de Manutenções
+                </div>
+                <div id="maintenanceCount" class="badge bg-primary">
+                    {{ maintenance_records|length }} registros
+                </div>
+            </div>
+            <div class="card-body">
+                {% if maintenance_records %}
+                <div class="table-responsive">
+                    <table class="table table-hover" id="maintenanceTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th><i class="fas fa-calendar me-1"></i>Data</th>
+                                <th><i class="fas fa-cogs me-1"></i>Tipo</th>
+                                <th><i class="fas fa-car me-1"></i>Veículo</th>
+                                <th><i class="fas fa-tachometer-alt me-1"></i>Km</th>
+                                <th><i class="fas fa-dollar-sign me-1"></i>Custo</th>
+                                <th><i class="fas fa-store me-1"></i>Local</th>
+                                <th><i class="fas fa-bell me-1"></i>Status</th>
+                                <th><i class="fas fa-microphone me-1"></i></th>
+                                <th><i class="fas fa-tools me-1"></i>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for record in maintenance_records %}
+                            <tr data-type="{{ record.maintenance_type }}" 
+                                data-voice="{{ record.created_by_voice|string|lower }}" 
+                                data-pending="{{ record.is_pending|string|lower }}">
+                                <td>{{ record.created_at.strftime('%d/%m/%Y') }}</td>
+                                <td>
+                                    <span class="badge bg-{{ record.type_badge_class }}">
+                                        <i class="{{ record.type_icon }} me-1"></i>{{ record.type_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>{{ record.vehicle.brand }} {{ record.vehicle.model }}</strong>
+                                    <br><small class="text-muted">{{ record.vehicle.license_plate }}</small>
+                                </td>
+                                <td>
+                                    {% if record.km_at_service %}
+                                        {{ "{:,}".format(record.km_at_service) }}
+                                        {% if record.next_service_km %}
+                                            <br><small class="text-muted">Próx: {{ "{:,}".format(record.next_service_km) }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if record.cost %}
+                                        <span class="text-success">R$ {{ "%.2f"|format(record.cost) }}</span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ record.service_provider or '-' }}
+                                </td>
+                                <td>
+                                    {% if record.is_pending %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-exclamation-triangle me-1"></i>Vencida
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-check me-1"></i>OK
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if record.created_by_voice %}
+                                        <i class="fas fa-microphone text-primary" title="Registrada por voz"></i>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group" aria-label="Ações">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                onclick="editMaintenance({{ record.id }})" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                onclick="deleteMaintenance({{ record.id }})" title="Excluir">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-tools fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">Nenhuma manutenção registrada</h4>
+                    <p class="text-muted">Comece registrando sua primeira manutenção ou use comandos de voz!</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#maintenanceModal">
+                        <i class="fas fa-plus me-2"></i>Registrar Primeira Manutenção
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Nova/Editar Manutenção -->
+<div class="modal fade" id="maintenanceModal" tabindex="-1" aria-labelledby="maintenanceModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="maintenanceModalLabel">
+                    <i class="fas fa-tools me-2"></i>Registrar Manutenção
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <form id="maintenanceForm" method="POST" action="/maintenance">
+                <div class="modal-body">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="id" id="maintenance_id"/>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="vehicle_id" class="form-label">Veículo *</label>
+                            <select class="form-select" name="vehicle_id" id="vehicle_id" required>
+                                <option value="">Selecione um veículo</option>
+                                {% for vehicle in user_vehicles %}
+                                <option value="{{ vehicle.id }}">{{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="maintenance_type" class="form-label">Tipo de Manutenção *</label>
+                            <select class="form-select" name="maintenance_type" id="maintenance_type" required>
+                                <option value="">Selecione o tipo</option>
+                                <option value="oil">Troca de Óleo</option>
+                                <option value="filter_air">Filtro de Ar</option>
+                                <option value="filter_fuel">Filtro de Combustível</option>
+                                <option value="tires">Pneus</option>
+                                <option value="brakes">Freios/Pastilhas</option>
+                                <option value="battery">Bateria</option>
+                                <option value="spark_plugs">Velas de Ignição</option>
+                                <option value="transmission">Transmissão/Câmbio</option>
+                                <option value="other">Outros</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="km_at_service" class="form-label">Quilometragem</label>
+                            <input type="number" class="form-control" name="km_at_service" id="km_at_service" 
+                                   placeholder="Ex: 50000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cost" class="form-label">Custo (R$)</label>
+                            <input type="number" step="0.01" class="form-control" name="cost" id="cost" 
+                                   placeholder="Ex: 150.00">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="service_provider" class="form-label">Oficina/Local do Serviço</label>
+                        <input type="text" class="form-control" name="service_provider" id="service_provider" 
+                               placeholder="Ex: Oficina Central">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="description" class="form-label">Descrição</label>
+                        <textarea class="form-control" name="description" id="description" rows="3" 
+                                  placeholder="Detalhes sobre a manutenção realizada..."></textarea>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="next_service_km" class="form-label">Próxima Manutenção (Km)</label>
+                            <input type="number" class="form-control" name="next_service_km" id="next_service_km" 
+                                   placeholder="Ex: 60000">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="next_service_date" class="form-label">Próxima Manutenção (Data)</label>
+                            <input type="date" class="form-control" name="next_service_date" id="next_service_date">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-2"></i>Salvar Manutenção
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Status de Comando de Voz -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="voiceToast" class="toast hide" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header">
+            <i class="fas fa-microphone text-primary me-2"></i>
+            <strong class="me-auto">Comando de Voz</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fechar"></button>
+        </div>
+        <div class="toast-body" id="voiceMessage">
+            Aguardando comando...
+        </div>
+    </div>
+</div>
+
+<script>
+// Filtros de manutenção
+function filterMaintenance(type) {
+    const table = document.getElementById('maintenanceTable');
+    const rows = table.getElementsByTagName('tr');
+    let visibleCount = 0;
+    
+    for (let i = 1; i < rows.length; i++) { // Skip header row
+        const row = rows[i];
+        const rowType = row.getAttribute('data-type');
+        const rowVoice = row.getAttribute('data-voice');
+        const rowPending = row.getAttribute('data-pending');
+        
+        let show = false;
+        
+        switch(type) {
+            case 'all':
+                show = true;
+                break;
+            case 'pending':
+                show = rowPending === 'true';
+                break;
+            case 'voice':
+                show = rowVoice === 'true';
+                break;
+            default:
+                show = rowType === type;
+        }
+        
+        row.style.display = show ? '' : 'none';
+        if (show) visibleCount++;
+    }
+    
+    document.getElementById('maintenanceCount').textContent = visibleCount + ' registros';
+}
+
+// Editar manutenção
+function editMaintenance(id) {
+    // Implementar edição
+    alert('Funcionalidade de edição será implementada em breve!');
+}
+
+// Excluir manutenção
+function deleteMaintenance(id) {
+    if (confirm('Tem certeza que deseja excluir esta manutenção?')) {
+        fetch(`/maintenance/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+            }
+        }).then(response => {
+            if (response.ok) {
+                location.reload();
+            } else {
+                alert('Erro ao excluir manutenção');
+            }
+        });
+    }
+}
+
+// Comando de voz
+document.getElementById('voiceBtn').addEventListener('click', function() {
+    const toast = new bootstrap.Toast(document.getElementById('voiceToast'));
+    const messageEl = document.getElementById('voiceMessage');
+    
+    if ('webkitSpeechRecognition' in window) {
+        const recognition = new webkitSpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = 'pt-BR';
+        
+        recognition.onstart = function() {
+            messageEl.textContent = '🎤 Ouvindo... Fale sobre sua manutenção.';
+            toast.show();
+        };
+        
+        recognition.onresult = function(event) {
+            const command = event.results[0][0].transcript;
+            messageEl.textContent = `Processando: "${command}"`;
+            
+            fetch('/api/voice_command', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                },
+                body: JSON.stringify({command: command})
+            })
+            .then(response => response.json())
+            .then(data => {
+                messageEl.textContent = data.message;
+                if (data.success && data.data_saved) {
+                    setTimeout(() => location.reload(), 2000);
+                }
+            })
+            .catch(error => {
+                messageEl.textContent = 'Erro ao processar comando de voz';
+            });
+        };
+        
+        recognition.onerror = function() {
+            messageEl.textContent = 'Erro no reconhecimento de voz';
+        };
+        
+        recognition.start();
+    } else {
+        alert('Reconhecimento de voz não suportado neste navegador');
+    }
+});
+
+// Auto-calcular próxima manutenção baseado no tipo
+document.getElementById('maintenance_type').addEventListener('change', function() {
+    const type = this.value;
+    const kmField = document.getElementById('km_at_service');
+    const nextKmField = document.getElementById('next_service_km');
+    const nextDateField = document.getElementById('next_service_date');
+    
+    if (kmField.value && type) {
+        const currentKm = parseInt(kmField.value);
+        const intervals = {
+            'oil': 10000,
+            'filter_air': 15000,
+            'filter_fuel': 20000,
+            'tires': 40000,
+            'brakes': 30000,
+            'battery': 0,
+            'spark_plugs': 60000,
+            'transmission': 50000,
+            'other': 0
+        };
+        
+        if (intervals[type] > 0) {
+            nextKmField.value = currentKm + intervals[type];
+        }
+        
+        // Calcular próxima data baseado no tipo
+        const monthsIntervals = {
+            'oil': 6,
+            'filter_air': 12,
+            'battery': 24,
+            'other': 0
+        };
+        
+        if (monthsIntervals[type] > 0) {
+            const nextDate = new Date();
+            nextDate.setMonth(nextDate.getMonth() + monthsIntervals[type]);
+            nextDateField.value = nextDate.toISOString().split('T')[0];
+        }
+    }
+});
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #007bff, #28a745);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(45deg, #007bff, #0056b3);
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(45deg, #ffc107, #e0a800);
+}
+
+.bg-gradient-success {
+    background: linear-gradient(45deg, #28a745, #1e7e34);
+}
+
+.bg-gradient-info {
+    background: linear-gradient(45deg, #17a2b8, #117a8b);
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.btn-group .btn {
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+}
+</style>
+{% endblock %}

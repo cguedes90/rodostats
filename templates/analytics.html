@@ -18,14 +18,14 @@
                                     <h6 class="mb-0">{{ vehicle.name }}</h6>
                                 </div>
                                 <div class="card-body">
-                                    {% if analytics_data[vehicle.name] %}
+                                    {% if analytics_data[vehicle.name] and analytics_data[vehicle.name].efficiency.has_data %}
                                     <div class="row">
                                         <div class="col-6">
-                                            <small class="text-muted">Consumo Médio</small>
+                                            <small class="text-info fw-semibold">Consumo Médio</small>
                                             <h5 class="text-primary">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.average_consumption) }} km/L</h5>
                                         </div>
                                         <div class="col-6">
-                                            <small class="text-muted">Tendência</small>
+                                            <small class="text-info fw-semibold">Tendência</small>
                                             <h6 class="
                                                 {% if analytics_data[vehicle.name].efficiency.trend == 'improving' %}text-success
                                                 {% elif analytics_data[vehicle.name].efficiency.trend == 'worsening' %}text-danger
@@ -46,20 +46,24 @@
                                     
                                     <div class="row">
                                         <div class="col-6">
-                                            <small class="text-muted">Melhor</small>
+                                            <small class="text-info fw-semibold">Melhor</small>
                                             <p class="text-success mb-1">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.best_consumption) }} km/L</p>
                                         </div>
                                         <div class="col-6">
-                                            <small class="text-muted">Pior</small>
+                                            <small class="text-info fw-semibold">Pior</small>
                                             <p class="text-warning mb-1">{{ "{:.1f}".format(analytics_data[vehicle.name].efficiency.worst_consumption) }} km/L</p>
                                         </div>
                                     </div>
 
                                     {% if analytics_data[vehicle.name].consumption %}
                                     <div class="mt-3">
-                                        <small class="text-muted">Consumo ao longo do tempo:</small>
-                                        <div class="chart-placeholder bg-light p-3 text-center">
-                                            <small>{{ analytics_data[vehicle.name].consumption|length }} registros de consumo</small>
+                                        <small class="text-info fw-semibold">Consumo ao longo do tempo</small>
+                                        <div class="bg-dark rounded p-2 mt-1">
+                                            <div class="row text-center">
+                                                <div class="col-12">
+                                                    <span class="badge bg-info">{{ analytics_data[vehicle.name].consumption|length }} registros</span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                     {% endif %}
@@ -67,8 +71,8 @@
                                     {% else %}
                                     <div class="text-center py-3">
                                         <i class="fas fa-chart-line fa-2x text-light mb-2"></i>
-                                        <p class="text-light">Dados insuficientes para análise</p>
-                                        <small class="text-light-emphasis">Adicione mais abastecimentos para ver os analytics</small>
+                                        <p class="text-white">Dados insuficientes para análise</p>
+                                        <small class="text-info">Adicione mais abastecimentos com odometro para ver os analytics</small>
                                     </div>
                                     {% endif %}
                                 </div>
@@ -88,22 +92,22 @@
                                         <div class="col-md-4">
                                             <div class="tip-item mb-3">
                                                 <i class="fas fa-tachometer-alt text-primary"></i>
-                                                <strong> Velocidade Constante</strong>
-                                                <p class="small text-muted">Mantenha velocidade entre 60-80 km/h</p>
+                                                <strong class="text-white"> Velocidade Constante</strong>
+                                                <p class="small text-white">Mantenha velocidade entre 60-80 km/h</p>
                                             </div>
                                         </div>
                                         <div class="col-md-4">
                                             <div class="tip-item mb-3">
                                                 <i class="fas fa-wrench text-success"></i>
-                                                <strong> Manutenção</strong>
-                                                <p class="small text-muted">Mantenha o carro sempre revisado</p>
+                                                <strong class="text-white"> Manutenção</strong>
+                                                <p class="small text-white">Mantenha o carro sempre revisado</p>
                                             </div>
                                         </div>
                                         <div class="col-md-4">
                                             <div class="tip-item mb-3">
                                                 <i class="fas fa-tire text-warning"></i>
-                                                <strong> Pneus</strong>
-                                                <p class="small text-muted">Verifique a pressão regularmente</p>
+                                                <strong class="text-white"> Pneus</strong>
+                                                <p class="small text-white">Verifique a pressão regularmente</p>
                                             </div>
                                         </div>
                                     </div>

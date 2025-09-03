@@ -1,14 +1,14 @@
 {
-  "name": "Rodo Stats - Controle Inteligente de Combustível",
-  "short_name": "Rodo Stats",
-  "description": "Aplicativo para controle inteligente de combustível com IA integrada",
-  "start_url": "/",
+  "name": "RodoStats - Controle Inteligente de Combustível",
+  "short_name": "RodoStats",
+  "description": "Controle inteligente de gastos com combustível e manutenção veicular com IA integrada",
+  "start_url": "/app",
   "display": "standalone",
-  "background_color": "#2D3748",
+  "background_color": "#1a1a2e",
   "theme_color": "#4A90E2",
   "orientation": "portrait-primary",
   "scope": "/",
-  "categories": ["productivity", "utilities"],
+  "categories": ["productivity", "finance", "utilities"],
   "lang": "pt-BR",
   "icons": [
     {
@@ -31,5 +31,50 @@
       "type": "image/png",
       "form_factor": "wide"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Adicionar Abastecimento",
+      "short_name": "Abastecer",
+      "description": "Registrar novo abastecimento rapidamente",
+      "url": "/vehicles?quick_fuel=true",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Ver Dashboard",
+      "short_name": "Dashboard", 
+      "description": "Visualizar estatísticas e gráficos",
+      "url": "/app",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Troca de Óleo",
+      "short_name": "Óleo",
+      "description": "Controlar trocas de óleo",
+      "url": "/oil_list",
+      "icons": [
+        {
+          "src": "/static/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "prefer_related_applications": false,
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  }
 }

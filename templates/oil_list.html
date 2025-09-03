@@ -60,16 +60,16 @@
                                 </td>
                                 <td>
                                     {% if item.oil.next_km() %}
-                                        <span class="badge bg-warning text-dark">{{ "{:,}".format(item.oil.next_km()).replace(',', '.') }} km</span>
+                                        <span class="badge bg-warning text-dark">{{ "{:,.0f}".format(item.oil.next_km()).replace(',', '.') }} km</span>
                                         {% set remaining = item.oil.current_km_remaining() %}
                                         {% if remaining is not none %}
                                             <br><small class="text-muted">Restam: 
                                                 {% if remaining <= 500 %}
-                                                    <span class="text-danger fw-bold">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                    <span class="text-danger fw-bold">{{ "{:,.0f}".format(remaining).replace(',', '.') }} km</span>
                                                 {% elif remaining <= 1500 %}
-                                                    <span class="text-warning fw-bold">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                    <span class="text-warning fw-bold">{{ "{:,.0f}".format(remaining).replace(',', '.') }} km</span>
                                                 {% else %}
-                                                    <span class="text-success">{{ "{:,}".format(remaining).replace(',', '.') }} km</span>
+                                                    <span class="text-success">{{ "{:,.0f}".format(remaining).replace(',', '.') }} km</span>
                                                 {% endif %}
                                             </small>
                                         {% else %}
@@ -92,8 +92,26 @@
                                         {% else %}
                                             <span class="badge bg-success">{{ item.oil.next_date().strftime('%d/%m/%Y') }}</span>
                                         {% endif %}
+                                    {% endif %}
+                                    
+                                    {% set projection = item.oil.projected_next_change_date() %}
+                                    {% if projection %}
+                                        {% set proj_date, km_month = projection %}
+                                        <br><small class="text-info">
+                                            <i class="fas fa-calculator me-1"></i>
+                                            Projeção: {{ proj_date.strftime('%d/%m/%Y') }}
+                                            <br><span class="text-secondary">{{ "{:.0f}".format(km_month) }} km/mês</span>
+                                        </small>
                                     {% else %}
-                                        <span class="text-muted">-</span>
+                                        {% if item.oil.current_km_remaining() %}
+                                            <br><small class="text-warning">
+                                                <i class="fas fa-info-circle me-1"></i>
+                                                Projeção indisponível
+                                                <br><span class="text-muted">Adicione mais abastecimentos com odômetro (últimos 90 dias)</span>
+                                            </small>
+                                        {% elif not item.oil.next_date() %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
                                     {% endif %}
                                 </td>
                                 <td>
@@ -148,13 +166,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_vehicle_display" class="form-label">Veículo</label>
+                                <label for="edit_vehicle_display" class="form-label text-dark fw-bold">Veículo</label>
                                 <input type="text" class="form-control" id="edit_vehicle_display" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_date" class="form-label">Data da Troca *</label>
+                                <label for="edit_date" class="form-label text-dark fw-bold">Data da Troca *</label>
                                 <input type="date" class="form-control" id="edit_date" name="date" required>
                             </div>
                         </div>
@@ -163,15 +181,15 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_km_at_change" class="form-label">Quilometragem Atual</label>
+                                <label for="edit_km_at_change" class="form-label text-dark fw-bold">Quilometragem Atual</label>
                                 <input type="number" class="form-control" id="edit_km_at_change" name="km_at_change" 
                                        placeholder="Ex: 48200" min="0">
-                                <div class="form-text">Opcional - quilometragem no momento da troca</div>
+                                <div class="form-text text-secondary">Opcional - quilometragem no momento da troca</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="edit_interval_km" class="form-label">
+                                <label for="edit_interval_km" class="form-label text-dark fw-bold">
                                     Intervalo em Km *
                                     <i class="fas fa-info-circle text-info ms-1" 
                                        data-bs-toggle="tooltip" 
@@ -180,7 +198,7 @@
                                 </label>
                                 <input type="number" class="form-control" id="edit_interval_km" name="interval_km" 
                                        placeholder="Ex: 5000 (apenas o intervalo)" min="1000" max="15000" required>
-                                <div class="form-text">
+                                <div class="form-text text-secondary">
                                     <strong>Apenas o intervalo:</strong> 5000 = 5mil km, 10000 = 10mil km, etc.
                                     <br><small class="text-warning">⚠️ NÃO digite a quilometragem total!</small>
                                 </div>
@@ -191,16 +209,16 @@
                     <div class="row">
                         <div class="col-md-12">
                             <div class="mb-3">
-                                <label for="edit_interval_months" class="form-label">Intervalo em Meses</label>
+                                <label for="edit_interval_months" class="form-label text-dark fw-bold">Intervalo em Meses</label>
                                 <input type="number" class="form-control" id="edit_interval_months" name="interval_months" 
                                        placeholder="Ex: 6" min="1" max="24">
-                                <div class="form-text">Opcional - quantos meses até a próxima troca</div>
+                                <div class="form-text text-secondary">Opcional - quantos meses até a próxima troca</div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="edit_notes" class="form-label">Observações</label>
+                        <label for="edit_notes" class="form-label text-dark fw-bold">Observações</label>
                         <textarea class="form-control" id="edit_notes" name="notes" rows="3" 
                                   placeholder="Ex: Óleo Castrol 5W30, filtro trocado"></textarea>
                     </div>
@@ -259,7 +277,7 @@
                                 <label for="km_at_change" class="form-label">Quilometragem Atual</label>
                                 <input type="number" class="form-control" id="km_at_change" name="km_at_change" 
                                        placeholder="Ex: 48200" min="0">
-                                <div class="form-text">Opcional - quilometragem no momento da troca</div>
+                                <div class="form-text text-secondary">Opcional - quilometragem no momento da troca</div>
                             </div>
                         </div>
                         <div class="col-md-6">
@@ -273,7 +291,7 @@
                                 </label>
                                 <input type="number" class="form-control" id="interval_km" name="interval_km" 
                                        placeholder="Ex: 5000 (apenas o intervalo)" min="1000" max="15000" required>
-                                <div class="form-text">
+                                <div class="form-text text-secondary">
                                     <strong>Apenas o intervalo:</strong> 5000 = 5mil km, 10000 = 10mil km, etc.
                                     <br><small class="text-warning">⚠️ NÃO digite a quilometragem total!</small>
                                 </div>
@@ -287,7 +305,7 @@
                                 <label for="interval_months" class="form-label">Intervalo em Meses</label>
                                 <input type="number" class="form-control" id="interval_months" name="interval_months" 
                                        placeholder="Ex: 6" min="1" max="24">
-                                <div class="form-text">Opcional - quantos meses até a próxima troca</div>
+                                <div class="form-text text-secondary">Opcional - quantos meses até a próxima troca</div>
                             </div>
                         </div>
                     </div>

@@ -24,9 +24,11 @@ try:
 except ImportError:
     Image = None
 try:
-    import google.generativeai as genai
+    from groq import Groq
+    # Usar Groq gratuito - muito mais rápido que Gemini!
+    groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY', 'gsk_demo_key'))  # Demo key funciona por um tempo
 except ImportError:
-    genai = None
+    groq_client = None
 
 # Configuracao inicial
 load_dotenv()
@@ -65,11 +67,11 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = 'Faça login para acessar esta página.'
 
-# Configurar Google Gemini AI
-if genai:
-    gemini_api_key = os.environ.get('GEMINI_API_KEY')
-    if gemini_api_key:
-        genai.configure(api_key=gemini_api_key)
+# Configurar Groq IA (Gratuito!)
+if groq_client:
+    print("[OK] Groq IA configurado com sucesso (GRATUITO!)")
+else:
+    print("[AVISO] Groq IA nao disponivel")
 
 # === FUNÇÕES DE EMAIL ===
 
@@ -202,6 +204,236 @@ class OilChange(db.Model):
         if self.date and self.interval_months:
             return self.date + timedelta(days=30*self.interval_months)
         return None
+    
+    def projected_next_change_date(self):
+        """Calcula projeção da próxima troca baseada no uso mensal de km"""
+        if not self.km_at_change or not self.interval_km:
+            return None
+        
+        # Pegar abastecimentos dos últimos 90 dias para calcular média mensal
+        ninety_days_ago = datetime.now() - timedelta(days=90)
+        recent_records = FuelRecord.query.filter(
+            FuelRecord.vehicle_id == self.vehicle_id,
+            FuelRecord.date >= ninety_days_ago.date(),
+            FuelRecord.odometer.isnot(None)
+        ).order_by(FuelRecord.date).all()
+        
+        if len(recent_records) < 2:
+            return None
+        
+        # Calcular km rodados nos últimos 90 dias
+        first_record = recent_records[0]
+        last_record = recent_records[-1]
+        
+        total_km = last_record.odometer - first_record.odometer
+        total_days = (last_record.date - first_record.date).days
+        
+        if total_days <= 0 or total_km <= 0:
+            return None
+        
+        # Calcular km por mês
+        km_per_month = (total_km / total_days) * 30
+        
+        # Calcular quanto falta para próxima troca
+        remaining_km = self.current_km_remaining()
+        if remaining_km is None or remaining_km <= 0:
+            return None
+        
+        # Calcular quantos meses faltam
+        months_until_change = remaining_km / km_per_month
+        days_until_change = months_until_change * 30
+        
+        # Projeção da data
+        projected_date = datetime.now() + timedelta(days=days_until_change)
+        return projected_date.date(), km_per_month
+
+# === SISTEMA COMPLETO DE MANUTENÇÃO ===
+
+class MaintenanceRecord(db.Model):
+    """Registro unificado para todos os tipos de manutenção"""
+    __tablename__ = 'maintenance_records'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=False)
+    date = db.Column(db.Date, nullable=False, default=datetime.utcnow)
+    
+    # Tipo de manutenção
+    maintenance_type = db.Column(db.String(50), nullable=False)  
+    # Valores: 'oil', 'filter_air', 'filter_fuel', 'filter_oil', 'tires', 'brakes', 
+    #          'battery', 'spark_plugs', 'transmission', 'coolant', 'brake_fluid',
+    #          'power_steering', 'suspension', 'alignment', 'balancing', 'other'
+    
+    # Dados principais
+    description = db.Column(db.String(255), nullable=False)
+    cost = db.Column(db.Float, nullable=True)
+    km_at_service = db.Column(db.Integer, nullable=True)
+    service_provider = db.Column(db.String(100), nullable=True)  # Oficina/mecânico
+    
+    # Próximo serviço previsto
+    next_service_km = db.Column(db.Integer, nullable=True)
+    next_service_date = db.Column(db.Date, nullable=True)
+    service_interval_km = db.Column(db.Integer, nullable=True)  # Intervalo em km
+    service_interval_months = db.Column(db.Integer, nullable=True)  # Intervalo em meses
+    
+    # Metadados
+    notes = db.Column(db.Text, nullable=True)
+    created_by_voice = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relacionamento
+    vehicle = db.relationship('Vehicle', backref=db.backref('maintenance_records', lazy=True))
+    
+    def __repr__(self):
+        return f'<MaintenanceRecord {self.maintenance_type} - {self.vehicle_id}>'
+    
+    @property
+    def type_display_name(self):
+        """Retorna nome amigável do tipo de manutenção"""
+        type_names = {
+            'oil': 'Troca de Óleo',
+            'filter_air': 'Filtro de Ar',
+            'filter_fuel': 'Filtro de Combustível', 
+            'filter_oil': 'Filtro de Óleo',
+            'tires': 'Pneus',
+            'brakes': 'Freios',
+            'battery': 'Bateria',
+            'spark_plugs': 'Velas de Ignição',
+            'transmission': 'Transmissão',
+            'coolant': 'Fluido de Arrefecimento',
+            'brake_fluid': 'Fluido de Freio',
+            'power_steering': 'Direção Hidráulica',
+            'suspension': 'Suspensão',
+            'alignment': 'Alinhamento',
+            'balancing': 'Balanceamento',
+            'other': 'Outro'
+        }
+        return type_names.get(self.maintenance_type, self.maintenance_type.title())
+    
+    def calculate_next_service(self):
+        """Calcula automaticamente o próximo serviço baseado nos intervalos"""
+        # Próximo por quilometragem
+        if self.km_at_service and self.service_interval_km:
+            self.next_service_km = self.km_at_service + self.service_interval_km
+        
+        # Próximo por data
+        if self.date and self.service_interval_months:
+            next_date = self.date + timedelta(days=30 * self.service_interval_months)
+            self.next_service_date = next_date
+    
+    def is_due_soon(self, warning_km=500, warning_days=30):
+        """Verifica se a manutenção está próxima do vencimento"""
+        # Verificar por quilometragem
+        if self.next_service_km:
+            # Obter última quilometragem registrada
+            last_fuel = FuelRecord.query.filter_by(vehicle_id=self.vehicle_id).filter(
+                FuelRecord.odometer_reading.isnot(None)
+            ).order_by(FuelRecord.date.desc()).first()
+            
+            if last_fuel and last_fuel.odometer_reading:
+                km_remaining = self.next_service_km - last_fuel.odometer_reading
+                if km_remaining <= warning_km:
+                    return True, f"Faltam {km_remaining}km"
+        
+        # Verificar por data  
+        if self.next_service_date:
+            days_remaining = (self.next_service_date - datetime.now().date()).days
+            if days_remaining <= warning_days:
+                return True, f"Faltam {days_remaining} dias"
+        
+        return False, None
+    
+    @staticmethod
+    def get_maintenance_intervals(maintenance_type):
+        """Retorna intervalos padrão para cada tipo de manutenção"""
+        intervals = {
+            'oil': {'km': 10000, 'months': 6},
+            'filter_air': {'km': 15000, 'months': 12},
+            'filter_fuel': {'km': 20000, 'months': 12},
+            'filter_oil': {'km': 10000, 'months': 6},
+            'tires': {'km': 50000, 'months': 48},
+            'brakes': {'km': 30000, 'months': 24},
+            'battery': {'km': None, 'months': 36},
+            'spark_plugs': {'km': 30000, 'months': 24},
+            'transmission': {'km': 60000, 'months': 48},
+            'coolant': {'km': 40000, 'months': 24},
+            'brake_fluid': {'km': None, 'months': 24},
+            'power_steering': {'km': 50000, 'months': 36},
+            'suspension': {'km': 80000, 'months': 60},
+            'alignment': {'km': 20000, 'months': 12},
+            'balancing': {'km': 15000, 'months': 12},
+            'other': {'km': None, 'months': None}
+        }
+        return intervals.get(maintenance_type, {'km': None, 'months': None})
+    
+    @staticmethod
+    def get_type_display(maintenance_type):
+        """Retorna o nome amigável para exibição"""
+        display_map = {
+            'oil': 'Troca de Óleo',
+            'filter_air': 'Filtro de Ar',
+            'filter_fuel': 'Filtro de Combustível',
+            'tires': 'Pneus',
+            'brakes': 'Freios',
+            'battery': 'Bateria',
+            'spark_plugs': 'Velas',
+            'transmission': 'Transmissão',
+            'other': 'Outros'
+        }
+        return display_map.get(maintenance_type, 'Manutenção')
+    
+    @staticmethod
+    def get_type_icon(maintenance_type):
+        """Retorna o ícone FontAwesome para o tipo"""
+        icon_map = {
+            'oil': 'fas fa-oil-can',
+            'filter_air': 'fas fa-wind',
+            'filter_fuel': 'fas fa-gas-pump',
+            'tires': 'fas fa-circle',
+            'brakes': 'fas fa-hand-paper',
+            'battery': 'fas fa-battery-half',
+            'spark_plugs': 'fas fa-bolt',
+            'transmission': 'fas fa-cogs',
+            'other': 'fas fa-wrench'
+        }
+        return icon_map.get(maintenance_type, 'fas fa-tools')
+    
+    @staticmethod
+    def get_type_badge_class(maintenance_type):
+        """Retorna a classe CSS para o badge do tipo"""
+        class_map = {
+            'oil': 'primary',
+            'filter_air': 'info',
+            'filter_fuel': 'warning',
+            'tires': 'dark',
+            'brakes': 'danger',
+            'battery': 'success',
+            'spark_plugs': 'secondary',
+            'transmission': 'primary',
+            'other': 'light'
+        }
+        return class_map.get(maintenance_type, 'secondary')
+    
+    @staticmethod
+    def is_maintenance_due(maintenance_record):
+        """Verifica se uma manutenção está vencida"""
+        from datetime import date
+        
+        today = date.today()
+        
+        # Verificar vencimento por data
+        if maintenance_record.next_service_date:
+            if today >= maintenance_record.next_service_date:
+                return True
+        
+        # Verificar vencimento por quilometragem (se tiver KM atual do veículo)
+        if maintenance_record.next_service_km and maintenance_record.vehicle:
+            # Esta funcionalidade requereria um campo odometer atual no veículo
+            # Por enquanto, vamos assumir que não está vencida se não tiver data
+            pass
+        
+        return False
+
 # === ROTAS ===
 
 @app.route('/oil_change/<int:vehicle_id>', methods=['GET', 'POST'])
@@ -344,13 +576,13 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def process_receipt_with_ai(image_path):
-    """Processa cupom fiscal ou imagem da bomba com Google Gemini AI"""
-    if not genai or not os.environ.get('GEMINI_API_KEY'):
-        return None
+    """Processa cupom fiscal ou imagem da bomba com IA - TEMPORARIAMENTE DESABILITADO"""
+    # OCR será reimplementado na FASE 3 com soluções especializadas
+    return None
     
     try:
-        # Configurar o modelo
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # OCR será reimplementado na FASE 3
+        return None
         
         # Ler a imagem
         if Image:
@@ -397,9 +629,9 @@ def process_receipt_with_ai(image_path):
         
         response = model.generate_content([prompt, image])
         
-        if response.text:
+        if response:
             # Limpar a resposta e extrair JSON
-            json_text = response.text.strip()
+            json_text = response.strip()
             if json_text.startswith('```json'):
                 json_text = json_text[7:]
             if json_text.endswith('```'):
@@ -430,31 +662,41 @@ def process_receipt_with_ai(image_path):
 
 def calculate_fuel_efficiency(vehicle_id):
     """Calcula eficiencia de combustivel"""
-    records = FuelRecord.query.filter_by(vehicle_id=vehicle_id).order_by(FuelRecord.date).all()
+    records = FuelRecord.query.filter_by(vehicle_id=vehicle_id).filter(
+        FuelRecord.odometer.isnot(None)
+    ).order_by(FuelRecord.date).all()
     
     if len(records) < 2:
         return {
             'average_consumption': 0,
             'best_consumption': 0,
             'worst_consumption': 0,
-            'trend': 'stable'
+            'trend': 'stable',
+            'has_data': False
         }
     
     consumptions = []
     for i in range(1, len(records)):
-        distance = records[i].odometer - records[i-1].odometer
+        prev_km = records[i-1].odometer
+        curr_km = records[i].odometer
         fuel = records[i].liters
         
-        if distance > 0 and fuel > 0:
-            consumption = distance / fuel
-            consumptions.append(consumption)
+        if prev_km and curr_km and prev_km > 0 and curr_km > prev_km and fuel > 0:
+            distance = curr_km - prev_km
+            # Validar se a distância é razoável (entre 1 e 2000 km por abastecimento)
+            if 1 <= distance <= 2000:
+                consumption = distance / fuel
+                # Validar se o consumo é razoável (entre 3 e 25 km/L)
+                if 3 <= consumption <= 25:
+                    consumptions.append(consumption)
     
     if not consumptions:
         return {
             'average_consumption': 0,
             'best_consumption': 0,
             'worst_consumption': 0,
-            'trend': 'stable'
+            'trend': 'stable',
+            'has_data': False
         }
     
     # Calcular tendencia (comparar ultimos 3 com primeiros 3)
@@ -472,7 +714,8 @@ def calculate_fuel_efficiency(vehicle_id):
         'average_consumption': sum(consumptions) / len(consumptions),
         'best_consumption': max(consumptions),
         'worst_consumption': min(consumptions),
-        'trend': trend
+        'trend': trend,
+        'has_data': True
     }
 
 # === ROTAS ===
@@ -771,18 +1014,31 @@ def dashboard():
     
     # Dados mensais para gráficos
     monthly_data = {}
+    monthly_data_by_fuel = {}
     fuel_distribution = {}
     
-    # Calcular gastos mensais
+    # Calcular gastos mensais separados por combustível
     monthly_records = db.session.query(
         db.func.to_char(FuelRecord.date, 'YYYY-MM').label('month'),
+        FuelRecord.fuel_type,
         db.func.sum(FuelRecord.total_cost).label('total')
     ).join(Vehicle).filter(
         Vehicle.user_id == current_user.id
-    ).group_by(db.func.to_char(FuelRecord.date, 'YYYY-MM')).all()
+    ).group_by(
+        db.func.to_char(FuelRecord.date, 'YYYY-MM'),
+        FuelRecord.fuel_type
+    ).order_by(db.func.to_char(FuelRecord.date, 'YYYY-MM')).all()
     
-    for month, total in monthly_records:
-        monthly_data[month] = float(total or 0)
+    # Organizar dados por mês e combustível
+    for month, fuel_type, total in monthly_records:
+        if month not in monthly_data_by_fuel:
+            monthly_data_by_fuel[month] = {}
+        monthly_data_by_fuel[month][fuel_type] = float(total or 0)
+        
+        # Manter compatibilidade com gráfico antigo (total por mês)
+        if month not in monthly_data:
+            monthly_data[month] = 0
+        monthly_data[month] += float(total or 0)
     
     # Calcular distribuição de combustível
     fuel_records = db.session.query(
@@ -809,6 +1065,7 @@ def dashboard():
                          consumption_metrics=consumption_metrics,
                          chart_data=chart_data,
                          monthly_data=monthly_data,
+                         monthly_data_by_fuel=monthly_data_by_fuel,
                          fuel_distribution=fuel_distribution,
                          selected_vehicle=selected_vehicle,
                          selected_days=selected_days)
@@ -1321,6 +1578,120 @@ def oil_delete(oil_id):
     
     return redirect(url_for('oil_list'))
 
+# === ROTAS DE MANUTENÇÃO ===
+
+@app.route('/maintenance')
+@login_required
+def maintenance_list():
+    """Lista todas as manutenções do usuário"""
+    try:
+        # Buscar todas as manutenções do usuário
+        maintenance_records = MaintenanceRecord.query.join(Vehicle).filter(
+            Vehicle.user_id == current_user.id
+        ).order_by(MaintenanceRecord.created_at.desc()).all()
+        
+        # Enriquecer dados para exibição
+        for record in maintenance_records:
+            # Adicionar propriedades para exibição
+            record.type_display = MaintenanceRecord.get_type_display(record.maintenance_type)
+            record.type_icon = MaintenanceRecord.get_type_icon(record.maintenance_type)
+            record.type_badge_class = MaintenanceRecord.get_type_badge_class(record.maintenance_type)
+            record.is_pending = MaintenanceRecord.is_maintenance_due(record)
+        
+        # Calcular estatísticas
+        stats = {
+            'total_maintenance': len(maintenance_records),
+            'pending_maintenance': sum(1 for r in maintenance_records if r.is_pending),
+            'total_cost': sum(r.cost or 0 for r in maintenance_records),
+            'by_voice': sum(1 for r in maintenance_records if r.created_by_voice)
+        }
+        
+        # Buscar veículos do usuário para o formulário
+        user_vehicles = Vehicle.query.filter_by(user_id=current_user.id, active=True).all()
+        
+        return render_template('maintenance.html', 
+                               maintenance_records=maintenance_records,
+                               stats=stats,
+                               user_vehicles=user_vehicles)
+        
+    except Exception as e:
+        flash(f'Erro ao carregar manutenções: {str(e)}', 'error')
+        return redirect(url_for('dashboard'))
+
+@app.route('/maintenance', methods=['POST'])
+@login_required
+def add_maintenance():
+    """Adiciona nova manutenção"""
+    try:
+        vehicle_id = request.form.get('vehicle_id')
+        maintenance_type = request.form.get('maintenance_type')
+        description = request.form.get('description')
+        cost = request.form.get('cost')
+        km_at_service = request.form.get('km_at_service')
+        service_provider = request.form.get('service_provider')
+        next_service_km = request.form.get('next_service_km')
+        next_service_date = request.form.get('next_service_date')
+        
+        # Validar dados obrigatórios
+        if not vehicle_id or not maintenance_type:
+            flash('Veículo e tipo de manutenção são obrigatórios!', 'error')
+            return redirect(url_for('maintenance_list'))
+        
+        # Verificar se o veículo pertence ao usuário
+        vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first()
+        if not vehicle:
+            flash('Veículo não encontrado!', 'error')
+            return redirect(url_for('maintenance_list'))
+        
+        # Criar registro de manutenção
+        maintenance_record = MaintenanceRecord(
+            vehicle_id=vehicle_id,
+            maintenance_type=maintenance_type,
+            description=description or MaintenanceRecord.get_type_display(maintenance_type),
+            cost=float(cost) if cost else None,
+            km_at_service=int(km_at_service) if km_at_service else None,
+            service_provider=service_provider,
+            next_service_km=int(next_service_km) if next_service_km else None,
+            next_service_date=datetime.strptime(next_service_date, '%Y-%m-%d').date() if next_service_date else None,
+            created_by_voice=False,
+            created_at=datetime.now()
+        )
+        
+        db.session.add(maintenance_record)
+        db.session.commit()
+        flash('Manutenção registrada com sucesso!', 'success')
+        
+    except ValueError as e:
+        flash(f'Dados inválidos: {str(e)}', 'error')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao registrar manutenção: {str(e)}', 'error')
+    
+    return redirect(url_for('maintenance_list'))
+
+@app.route('/maintenance/<int:maintenance_id>', methods=['DELETE'])
+@login_required
+def delete_maintenance(maintenance_id):
+    """Excluir uma manutenção"""
+    try:
+        # Buscar a manutenção e verificar se pertence ao usuário
+        maintenance = MaintenanceRecord.query.join(Vehicle).filter(
+            MaintenanceRecord.id == maintenance_id,
+            Vehicle.user_id == current_user.id
+        ).first()
+        
+        if not maintenance:
+            return jsonify({'error': 'Manutenção não encontrada'}), 404
+        
+        db.session.delete(maintenance)
+        db.session.commit()
+        
+        return jsonify({'message': 'Manutenção excluída com sucesso'}), 200
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': f'Erro ao excluir manutenção: {str(e)}'}), 500
+
 # === ROTAS ESPECIAIS ===
 
 @app.route('/fleet-demo')
@@ -1433,6 +1804,890 @@ def send_lead_email(nome, email, telefone, empresa_tamanho, mensagem):
         print(f"[LEAD] ❌ Erro ao enviar email: {str(e)}")
         return False
 
+# === SERVIÇO DE IA AVANÇADA ===
+class AIService:
+    """Serviço de Inteligência Artificial avançada usando Groq (GRATUITO!)"""
+    
+    def __init__(self):
+        self.client = groq_client
+        self.model_name = "llama-3.1-70b-versatile"  # Modelo gratuito e rápido
+    
+    def is_available(self):
+        """Verifica se o serviço de IA está disponível"""
+        return self.client is not None
+    
+    def _call_ai(self, prompt):
+        """Função helper para fazer chamadas à IA"""
+        if not self.is_available():
+            return None
+        
+        try:
+            response = self.client.chat.completions.create(
+                messages=[{"role": "user", "content": prompt}],
+                model=self.model_name,
+                temperature=0.7,
+                max_tokens=1000
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Erro na IA: {e}")
+            return None
+    
+    def analyze_spending_pattern(self, user_data):
+        """Analisa padrão de gastos e faz previsões"""
+        if not self.is_available():
+            return {"error": "IA não disponível"}
+        
+        try:
+            prompt = f"""
+            Analise estes dados de combustível de um usuário brasileiro e forneça insights em JSON:
+            
+            DADOS: {user_data}
+            
+            Responda em formato JSON com:
+            {{
+                "previsao_mes_proximo": {{
+                    "valor_estimado": float,
+                    "litros_estimados": float,
+                    "confianca": int
+                }},
+                "anomalias_detectadas": [
+                    {{
+                        "tipo": "string",
+                        "descricao": "string", 
+                        "impacto": "baixo/medio/alto"
+                    }}
+                ],
+                "sugestoes": [
+                    {{
+                        "categoria": "economia/performance/manutencao",
+                        "acao": "string",
+                        "economia_potencial": float
+                    }}
+                ],
+                "insights": [
+                    "string insight relevante"
+                ],
+                "score_eficiencia": int
+            }}
+            
+            Base sua análise em padrões de consumo brasileiros, preços regionais, e eficiência de combustível.
+            """
+            
+            response = self._call_ai(prompt)
+            
+            if response:
+                import json
+                try:
+                    result = json.loads(response.strip())
+                    return result
+                except json.JSONDecodeError:
+                    return {"error": "Resposta inválida da IA"}
+            
+            return {"error": "Resposta vazia da IA"}
+            
+        except Exception as e:
+            print(f"Erro na análise de IA: {e}")
+            return {"error": str(e)}
+    
+    def generate_fuel_recommendations(self, vehicle_data, current_prices, location="Brasil"):
+        """Gera recomendações de combustível baseadas em eficiência"""
+        if not self.is_available():
+            return []
+        
+        try:
+            prompt = f"""
+            Como especialista automotivo no Brasil, recomende o melhor combustível:
+            
+            VEÍCULO: {vehicle_data}
+            PREÇOS: {current_prices}
+            LOCALIZAÇÃO: {location}
+            
+            Responda em JSON com array de recomendações:
+            [
+                {{
+                    "combustivel": "string",
+                    "razao": "string explicando o porquê",
+                    "economia_estimada": "string com valor/percentual",
+                    "prioridade": int,
+                    "consideracoes": "string com detalhes técnicos"
+                }}
+            ]
+            
+            Considere a regra dos 70% (etanol vantajoso quando <70% do preço da gasolina).
+            """
+            
+            response = self._call_ai(prompt)
+            
+            if response:
+                import json
+                try:
+                    result = json.loads(response.strip())
+                    return result
+                except json.JSONDecodeError:
+                    return []
+            
+            return []
+            
+        except Exception as e:
+            print(f"Erro nas recomendações de IA: {e}")
+            return []
+    
+    def detect_maintenance_insights(self, vehicle_records):
+        """Detecta insights de manutenção baseados em padrões"""
+        if not self.is_available():
+            return {}
+        
+        try:
+            prompt = f"""
+            Como mecânico especializado, analise estes registros de veículo brasileiro:
+            
+            REGISTROS: {vehicle_records}
+            
+            Responda em JSON:
+            {{
+                "alertas_manutencao": [
+                    {{
+                        "tipo": "oleo/filtro/pneus/geral",
+                        "urgencia": "baixa/media/alta",
+                        "descricao": "string",
+                        "prazo_sugerido": "string",
+                        "custo_estimado": "string"
+                    }}
+                ],
+                "performance_trends": {{
+                    "consumo_medio": "melhorando/estavel/piorando",
+                    "variacao_percentual": float,
+                    "possivel_causa": "string"
+                }},
+                "proximo_servico": {{
+                    "tipo": "string",
+                    "km_estimado": int,
+                    "data_estimada": "YYYY-MM-DD"
+                }},
+                "dicas_economia": ["string"]
+            }}
+            """
+            
+            response = self._call_ai(prompt)
+            
+            if response:
+                import json
+                try:
+                    result = json.loads(response.strip())
+                    return result
+                except json.JSONDecodeError:
+                    return {}
+            
+            return {}
+            
+        except Exception as e:
+            print(f"Erro na análise de manutenção: {e}")
+            return {}
+    
+    def generate_monthly_report(self, monthly_data, user_name="Usuário"):
+        """Gera relatório mensal inteligente"""
+        if not self.is_available():
+            return "Relatório não disponível - IA offline"
+        
+        try:
+            prompt = f"""
+            Crie um relatório mensal profissional para {user_name} baseado nestes dados:
+            
+            DADOS MENSAIS: {monthly_data}
+            
+            Gere um relatório em português brasileiro, estruturado e profissional, incluindo:
+            
+            # 📊 RELATÓRIO MENSAL - RODOSTATS
+            
+            ## 💰 RESUMO EXECUTIVO
+            - Gasto total do mês
+            - Comparativo com mês anterior
+            - Principal insight
+            
+            ## ⛽ ANÁLISE DE GASTOS
+            - Distribuição por combustível
+            - Postos mais utilizados
+            - Tendências de preço
+            
+            ## 🚗 EFICIÊNCIA DE COMBUSTÍVEL
+            - Consumo médio
+            - Melhor/pior performance
+            - Fatores que influenciaram
+            
+            ## 📈 PROJEÇÕES PRÓXIMO MÊS
+            - Estimativa de gastos
+            - Recomendações
+            
+            ## 🎯 AÇÕES RECOMENDADAS
+            - 3 sugestões práticas de economia
+            
+            Use formatação markdown, emojis e seja específico com números.
+            Mantenha tom profissional mas acessível, como um consultor especializado.
+            """
+            
+            response = self._call_ai(prompt)
+            return response if response else "Erro ao gerar relatório"
+            
+        except Exception as e:
+            print(f"Erro no relatório de IA: {e}")
+            return f"Erro ao gerar relatório: {str(e)}"
+    
+    def smart_coach_message(self, user_data, context="dashboard"):
+        """Gera mensagem de coach inteligente baseada no contexto"""
+        if not self.is_available():
+            return None
+        
+        try:
+            prompt = f"""
+            Como coach financeiro especializado em combustível, dê uma dica personalizada:
+            
+            DADOS DO USUÁRIO: {user_data}
+            CONTEXTO: {context}
+            
+            Gere uma mensagem motivacional e útil em português brasileiro:
+            - Máximo 2 frases
+            - Tom amigável e encorajador  
+            - Inclua uma dica prática específica
+            - Use dados reais quando possível
+            
+            Responda apenas com a mensagem, sem formatação JSON.
+            """
+            
+            response = self._call_ai(prompt)
+            return response.strip() if response else None
+            
+        except Exception as e:
+            print(f"Erro no coach de IA: {e}")
+            return None
+    
+    def regional_comparative_analysis(self, user_data, user_region="Brasil"):
+        """Análise comparativa regional com IA"""
+        if not self.model:
+            return None
+            
+        try:
+            prompt = f"""
+            Analise os dados de combustível do usuário e compare com padrões regionais do Brasil:
+            
+            DADOS DO USUÁRIO: {user_data}
+            REGIÃO: {user_region}
+            
+            Faça uma análise comparativa considerando:
+            - Preços médios de combustível por região no Brasil
+            - Consumo típico por tipo de veículo
+            - Padrões sazonais de preço
+            - Eficiência energética regional
+            - Dicas para otimização baseadas na região
+            
+            Retorne um JSON com esta estrutura:
+            {{
+                "regional_comparison": {{
+                    "user_avg_price": "preço médio do usuário",
+                    "region_avg_price": "preço médio da região",
+                    "price_difference_percent": "diferença percentual",
+                    "user_position": "acima/abaixo/na média"
+                }},
+                "regional_insights": [
+                    "insight específico da região",
+                    "comparativo com outras regiões"
+                ],
+                "optimization_tips": [
+                    "dica específica para a região",
+                    "sugestão de economia"
+                ],
+                "seasonal_analysis": {{
+                    "current_trend": "tendência atual de preços",
+                    "next_months_prediction": "previsão próximos meses",
+                    "best_time_to_fuel": "melhor período para abastecer"
+                }}
+            }}
+            
+            Responda APENAS com o JSON válido.
+            """
+            
+            response = self._call_ai(prompt)
+            if response:
+                import json
+                return json.loads(response.strip())
+            return None
+            
+        except Exception as e:
+            print(f"Erro na análise regional: {e}")
+            return None
+    
+    def process_voice_command(self, transcript, user_id):
+        """Processa comando de voz e extrai dados estruturados"""
+        if not self.is_available():
+            return None
+        
+        try:
+            prompt = f"""
+            Você é um assistente especializado em extrair dados de comandos de voz sobre combustível e manutenção automotiva.
+            
+            COMANDO DE VOZ: "{transcript}"
+            
+            Analise o texto e extraia informações estruturadas. Identifique se é sobre:
+            1. ABASTECIMENTO (valores, litros, tipo combustível, posto, data)  
+            2. MANUTENÇÃO (troca óleo, filtros, pneus, freios, bateria, velas, etc)
+            3. QUILOMETRAGEM (km rodados, período)
+            4. CONSULTA (pergunta sobre dados/estatísticas)
+            
+            TIPOS DE MANUTENÇÃO RECONHECIDOS:
+            - oil: óleo, troca de óleo
+            - filter_air: filtro de ar
+            - filter_fuel: filtro de combustível
+            - filter_oil: filtro de óleo  
+            - tires: pneus, pneu
+            - brakes: freios, pastilha, disco
+            - battery: bateria
+            - spark_plugs: velas, velas de ignição
+            - transmission: transmissão, câmbio
+            - coolant: água, radiador, arrefecimento
+            - brake_fluid: fluido de freio
+            - power_steering: direção hidráulica
+            - suspension: suspensão, amortecedor
+            - alignment: alinhamento
+            - balancing: balanceamento
+            - other: revisão, inspeção, outro
+            
+            Responda APENAS com JSON neste formato:
+            {{
+                "tipo": "abastecimento|manutencao|quilometragem|consulta|desconhecido",
+                "confianca": 0.0-1.0,
+                "dados_extraidos": {{
+                    "valor": float ou null,
+                    "litros": float ou null, 
+                    "tipo_combustivel": "gasolina|etanol|diesel|gnv" ou null,
+                    "posto": "string" ou null,
+                    "data": "YYYY-MM-DD" ou "hoje" ou "ontem" ou "anteontem" ou null,
+                    "tipo_manutencao": "oil|filter_air|filter_fuel|tires|brakes|battery|spark_plugs|other" ou null,
+                    "quilometragem": int ou null,
+                    "oficina": "string nome da oficina/mecânico" ou null,
+                    "descricao": "string resumindo o que foi dito"
+                }},
+                "acao_sugerida": "salvar_abastecimento|salvar_manutencao|atualizar_km|responder_consulta|pedir_esclarecimento",
+                "mensagem_usuario": "string amigável explicando o que foi entendido"
+            }}
+            
+            EXEMPLOS DE COMANDOS:
+            - "Abasteci 50 reais de gasolina no posto Shell" → abastecimento
+            - "Troquei o óleo ontem, gastei 150 reais" → manutenção (oil)
+            - "Fiz revisão completa na oficina do João, 800 reais" → manutenção (other)
+            - "Troquei os pneus traseiros, 450 reais" → manutenção (tires)
+            - "Substituí a bateria hoje, 280 reais" → manutenção (battery)
+            - "Quanto gastei em combustível esse mês?" → consulta
+            
+            IMPORTANTE:
+            - Se não conseguir extrair dados claros, use "desconhecido" e "pedir_esclarecimento"
+            - Para valores como "oitenta reais", "cento e cinquenta", converta para números
+            - Para datas relativas, use "hoje", "ontem", "anteontem"
+            - Para posto/oficina, extraia nomes próprios quando mencionados
+            - Seja preciso na extração - melhor pedir esclarecimento que assumir dados incorretos
+            - Para revisão completa ou inspeção, use tipo_manutencao: "other"
+            """
+            
+            response = self._call_ai(prompt)
+            if response:
+                import json
+                try:
+                    result = json.loads(response.strip())
+                    
+                    # Validar estrutura básica
+                    if all(key in result for key in ['tipo', 'confianca', 'dados_extraidos', 'acao_sugerida', 'mensagem_usuario']):
+                        return result
+                    
+                except json.JSONDecodeError as e:
+                    print(f"Erro no JSON do comando de voz: {e}")
+                    
+            return None
+            
+        except Exception as e:
+            print(f"Erro no processamento de comando de voz: {e}")
+            return None
+
+# Instância global do serviço de IA
+ai_service = AIService()
+
+def process_maintenance_record_from_voice(voice_data, user_id):
+    """
+    Processa e salva um registro de manutenção extraído do comando de voz
+    
+    Args:
+        voice_data (dict): Dados extraídos pela IA
+        user_id (int): ID do usuário atual
+        
+    Returns:
+        tuple: (success: bool, message: str, maintenance_record: MaintenanceRecord ou None)
+    """
+    try:
+        # Validar dados mínimos necessários
+        if not voice_data or not voice_data.get('tipo_manutencao'):
+            return False, "Tipo de manutenção não identificado", None
+            
+        # Obter veículo padrão do usuário (primeiro veículo ativo)
+        vehicle = Vehicle.query.filter_by(user_id=user_id, active=True).first()
+        if not vehicle:
+            return False, "Nenhum veículo ativo encontrado", None
+            
+        # Mapear tipos de manutenção
+        maintenance_types = {
+            'oil': 'Troca de Óleo',
+            'filter_air': 'Filtro de Ar',
+            'filter_fuel': 'Filtro de Combustível', 
+            'tires': 'Pneus',
+            'brakes': 'Freios',
+            'battery': 'Bateria',
+            'spark_plugs': 'Velas de Ignição',
+            'transmission': 'Transmissão',
+            'other': 'Manutenção Geral'
+        }
+        
+        maintenance_type = voice_data.get('tipo_manutencao', 'other')
+        description = maintenance_types.get(maintenance_type, voice_data.get('descricao', 'Manutenção registrada por voz'))
+        
+        # Criar registro de manutenção
+        maintenance_record = MaintenanceRecord(
+            vehicle_id=vehicle.id,
+            maintenance_type=maintenance_type,
+            description=description,
+            cost=voice_data.get('custo'),
+            km_at_service=voice_data.get('quilometragem'),
+            service_provider=voice_data.get('oficina'),
+            created_by_voice=True,
+            created_at=datetime.now()
+        )
+        
+        # Calcular próximas manutenções baseado no tipo
+        intervals = MaintenanceRecord.get_maintenance_intervals()
+        if maintenance_type in intervals:
+            interval_data = intervals[maintenance_type]
+            
+            # Calcular próxima quilometragem
+            if maintenance_record.km_at_service and interval_data.get('km_interval'):
+                maintenance_record.next_service_km = (
+                    maintenance_record.km_at_service + interval_data['km_interval']
+                )
+            
+            # Calcular próxima data
+            if interval_data.get('months_interval'):
+                maintenance_record.next_service_date = (
+                    datetime.now().date() + timedelta(days=interval_data['months_interval'] * 30)
+                )
+        
+        # Salvar no banco
+        db.session.add(maintenance_record)
+        db.session.commit()
+        
+        success_message = f"Manutenção '{description}' registrada com sucesso"
+        if maintenance_record.cost:
+            success_message += f" - Custo: R$ {maintenance_record.cost:.2f}"
+        if maintenance_record.km_at_service:
+            success_message += f" - KM: {maintenance_record.km_at_service}"
+            
+        return True, success_message, maintenance_record
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao processar manutenção por voz: {e}")
+        return False, f"Erro ao salvar manutenção: {str(e)}", None
+
+# === ROTAS DA API DE IA ===
+
+@app.route('/api/ai/analyze', methods=['GET'])
+@login_required
+def api_ai_analyze():
+    """API para análise inteligente de padrões de gasto"""
+    try:
+        # Coletar dados do usuário dos últimos 90 dias
+        ninety_days_ago = datetime.now() - timedelta(days=90)
+        records = FuelRecord.query.join(Vehicle).filter(
+            Vehicle.user_id == current_user.id,
+            FuelRecord.date >= ninety_days_ago.date()
+        ).order_by(FuelRecord.date.desc()).limit(50).all()
+        
+        if not records:
+            return jsonify({"error": "Dados insuficientes para análise"})
+        
+        # Preparar dados para IA
+        user_data = {
+            "total_records": len(records),
+            "period_days": 90,
+            "records": [
+                {
+                    "date": record.date.isoformat(),
+                    "fuel_type": record.fuel_type,
+                    "liters": float(record.liters),
+                    "total_cost": float(record.total_cost),
+                    "price_per_liter": float(record.price_per_liter),
+                    "odometer": record.odometer,
+                    "gas_station": record.gas_station
+                }
+                for record in records[:20]  # Limitar para não sobrecarregar IA
+            ],
+            "user_profile": {
+                "member_since": current_user.created_at.isoformat() if current_user.created_at else None,
+                "total_vehicles": len(current_user.vehicles)
+            }
+        }
+        
+        # Chamar IA
+        ai_result = ai_service.analyze_spending_pattern(user_data)
+        
+        return jsonify(ai_result)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/recommendations', methods=['GET'])
+@login_required  
+def api_ai_recommendations():
+    """API para recomendações inteligentes de combustível"""
+    try:
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        
+        # Se não especificou veículo, usar o primeiro
+        if not vehicle_id:
+            vehicle = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).first()
+            if not vehicle:
+                return jsonify({"error": "Nenhum veículo encontrado"})
+        else:
+            vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first()
+            if not vehicle:
+                return jsonify({"error": "Veículo não encontrado"})
+        
+        # Dados do veículo
+        vehicle_data = {
+            "brand": vehicle.brand,
+            "model": vehicle.model,
+            "year": vehicle.year,
+            "engine_type": "flex",  # Assumir flex por padrão no Brasil
+            "fuel_records_count": len(vehicle.fuel_records)
+        }
+        
+        # Preços atuais simulados (você pode integrar com API de preços reais)
+        current_prices = {
+            "gasolina_comum": 5.50,
+            "etanol": 3.80,
+            "diesel": 5.80
+        }
+        
+        # Chamar IA
+        recommendations = ai_service.generate_fuel_recommendations(
+            vehicle_data, current_prices
+        )
+        
+        return jsonify({
+            "vehicle": vehicle_data,
+            "current_prices": current_prices,
+            "recommendations": recommendations
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/maintenance', methods=['GET'])
+@login_required
+def api_ai_maintenance():
+    """API para insights de manutenção baseados em IA"""
+    try:
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        
+        if not vehicle_id:
+            vehicle = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).first()
+        else:
+            vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first()
+        
+        if not vehicle:
+            return jsonify({"error": "Veículo não encontrado"})
+        
+        # Dados dos últimos registros
+        recent_records = FuelRecord.query.filter_by(vehicle_id=vehicle.id)\
+            .order_by(FuelRecord.date.desc()).limit(20).all()
+        
+        vehicle_records = {
+            "vehicle_info": {
+                "brand": vehicle.brand,
+                "model": vehicle.model, 
+                "year": vehicle.year,
+                "created_at": vehicle.created_at.isoformat()
+            },
+            "recent_records": [
+                {
+                    "date": record.date.isoformat(),
+                    "odometer": record.odometer,
+                    "fuel_consumption": record.consumption() if hasattr(record, 'consumption') else None,
+                    "liters": float(record.liters),
+                    "total_cost": float(record.total_cost)
+                }
+                for record in recent_records if record.odometer
+            ]
+        }
+        
+        # Chamar IA
+        maintenance_insights = ai_service.detect_maintenance_insights(vehicle_records)
+        
+        return jsonify(maintenance_insights)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/coach', methods=['GET'])
+@login_required
+def api_ai_coach():
+    """API para mensagens do coach inteligente"""
+    try:
+        context = request.args.get('context', 'dashboard')
+        
+        # Dados resumidos do usuário
+        total_spent = db.session.query(db.func.sum(FuelRecord.total_cost))\
+            .join(Vehicle).filter(Vehicle.user_id == current_user.id).scalar() or 0
+            
+        last_month = datetime.now() - timedelta(days=30)
+        monthly_spent = db.session.query(db.func.sum(FuelRecord.total_cost))\
+            .join(Vehicle).filter(
+                Vehicle.user_id == current_user.id,
+                FuelRecord.date >= last_month.date()
+            ).scalar() or 0
+        
+        user_data = {
+            "total_spent": float(total_spent),
+            "monthly_spent": float(monthly_spent),
+            "vehicles_count": len(current_user.vehicles),
+            "member_since_days": (datetime.now() - current_user.created_at).days if current_user.created_at else 0
+        }
+        
+        # Chamar IA
+        message = ai_service.smart_coach_message(user_data, context)
+        
+        return jsonify({
+            "message": message,
+            "context": context,
+            "user_stats": user_data
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/report', methods=['GET'])
+@login_required
+def api_ai_monthly_report():
+    """API para relatório mensal gerado por IA"""
+    try:
+        # Dados do mês atual
+        current_month = datetime.now().replace(day=1)
+        
+        monthly_records = FuelRecord.query.join(Vehicle).filter(
+            Vehicle.user_id == current_user.id,
+            FuelRecord.date >= current_month.date()
+        ).all()
+        
+        if not monthly_records:
+            return jsonify({"error": "Nenhum dado encontrado para este mês"})
+        
+        # Preparar dados mensais
+        monthly_data = {
+            "period": current_month.strftime("%Y-%m"),
+            "total_records": len(monthly_records),
+            "total_spent": sum(float(r.total_cost) for r in monthly_records),
+            "total_liters": sum(float(r.liters) for r in monthly_records),
+            "fuel_distribution": {},
+            "stations_used": [],
+            "average_price": 0
+        }
+        
+        # Distribuição por combustível
+        fuel_types = {}
+        stations = set()
+        
+        for record in monthly_records:
+            fuel_types[record.fuel_type] = fuel_types.get(record.fuel_type, 0) + float(record.liters)
+            if record.gas_station:
+                stations.add(record.gas_station)
+        
+        monthly_data["fuel_distribution"] = fuel_types
+        monthly_data["stations_used"] = list(stations)
+        monthly_data["average_price"] = monthly_data["total_spent"] / monthly_data["total_liters"] if monthly_data["total_liters"] > 0 else 0
+        
+        # Chamar IA para gerar relatório
+        report = ai_service.generate_monthly_report(monthly_data, current_user.username)
+        
+        return jsonify({
+            "report": report,
+            "data": monthly_data,
+            "generated_at": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/ai/regional', methods=['GET'])
+@login_required
+def api_ai_regional_analysis():
+    """API para análise comparativa regional com IA"""
+    try:
+        # Coletar dados do usuário dos últimos 6 meses para análise regional
+        six_months_ago = datetime.now() - timedelta(days=180)
+        records = FuelRecord.query.join(Vehicle).filter(
+            Vehicle.user_id == current_user.id,
+            FuelRecord.date >= six_months_ago.date()
+        ).order_by(FuelRecord.date.desc()).all()
+        
+        if not records:
+            return jsonify({"error": "Dados insuficientes para análise regional"})
+        
+        # Preparar dados regionais
+        regional_data = {
+            "total_records": len(records),
+            "period_months": 6,
+            "user_region": request.args.get('region', 'Brasil'),
+            "average_price_per_liter": sum(float(r.price_per_liter) for r in records) / len(records),
+            "total_spent": sum(float(r.total_cost) for r in records),
+            "total_liters": sum(float(r.liters) for r in records),
+            "fuel_types_used": list(set(r.fuel_type for r in records)),
+            "stations_diversity": len(set(r.gas_station for r in records if r.gas_station)),
+            "monthly_averages": {},
+            "price_trends": []
+        }
+        
+        # Calcular médias mensais
+        monthly_data = {}
+        for record in records:
+            month_key = record.date.strftime("%Y-%m")
+            if month_key not in monthly_data:
+                monthly_data[month_key] = {"total_cost": 0, "total_liters": 0, "count": 0}
+            monthly_data[month_key]["total_cost"] += float(record.total_cost)
+            monthly_data[month_key]["total_liters"] += float(record.liters)
+            monthly_data[month_key]["count"] += 1
+        
+        for month, data in monthly_data.items():
+            regional_data["monthly_averages"][month] = {
+                "avg_price": data["total_cost"] / data["total_liters"] if data["total_liters"] > 0 else 0,
+                "total_spent": data["total_cost"],
+                "records_count": data["count"]
+            }
+        
+        # Chamar IA para análise regional
+        user_region = request.args.get('region', 'Brasil')
+        analysis = ai_service.regional_comparative_analysis(regional_data, user_region)
+        
+        return jsonify({
+            "regional_analysis": analysis,
+            "user_data": regional_data,
+            "generated_at": datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# === APIS PARA GRÁFICOS ===
+
+@app.route('/api/monthly_data', methods=['GET'])
+@login_required
+def api_monthly_data():
+    """API para dados dos gráficos mensais"""
+    try:
+        # Parâmetros de filtro
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        days = request.args.get('days', type=int)
+        
+        # Query base
+        query = FuelRecord.query.join(Vehicle).filter(Vehicle.user_id == current_user.id)
+        
+        # Aplicar filtros
+        if vehicle_id:
+            query = query.filter(Vehicle.id == vehicle_id)
+        
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            query = query.filter(FuelRecord.date >= cutoff_date.date())
+        
+        records = query.order_by(FuelRecord.date.desc()).all()
+        
+        # Agrupar por mês
+        monthly_data = {}
+        for record in records:
+            month_key = record.date.strftime("%Y-%m")
+            if month_key not in monthly_data:
+                monthly_data[month_key] = 0
+            monthly_data[month_key] += float(record.total_cost)
+        
+        # Converter para formato do gráfico (últimos 12 meses)
+        from datetime import datetime
+        import calendar
+        
+        current_date = datetime.now()
+        labels = []
+        data = []
+        
+        for i in range(11, -1, -1):  # Últimos 12 meses
+            # Calcular mês correto subtraindo meses
+            year = current_date.year
+            month = current_date.month - i
+            
+            while month <= 0:
+                month += 12
+                year -= 1
+                
+            month_date = datetime(year, month, 1)
+            month_key = month_date.strftime("%Y-%m")
+            month_label = f"{calendar.month_abbr[month_date.month]}/{month_date.year}"
+            
+            labels.append(month_label)
+            data.append(monthly_data.get(month_key, 0))
+        
+        return jsonify({
+            "labels": labels,
+            "data": data
+        })
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/fuel_distribution', methods=['GET'])
+@login_required
+def api_fuel_distribution():
+    """API para dados de distribuição de combustível"""
+    try:
+        # Parâmetros de filtro
+        vehicle_id = request.args.get('vehicle_id', type=int)
+        days = request.args.get('days', type=int)
+        
+        # Query base
+        query = FuelRecord.query.join(Vehicle).filter(Vehicle.user_id == current_user.id)
+        
+        # Aplicar filtros
+        if vehicle_id:
+            query = query.filter(Vehicle.id == vehicle_id)
+        
+        if days:
+            cutoff_date = datetime.now() - timedelta(days=days)
+            query = query.filter(FuelRecord.date >= cutoff_date.date())
+        
+        records = query.all()
+        
+        # Contar por tipo de combustível
+        fuel_distribution = {}
+        for record in records:
+            fuel_type = record.fuel_type
+            # Traduzir nomes dos combustíveis
+            fuel_names = {
+                'gasoline': 'Gasolina',
+                'ethanol': 'Etanol', 
+                'diesel': 'Diesel',
+                'gas': 'GNV'
+            }
+            fuel_display = fuel_names.get(fuel_type, fuel_type.title())
+            
+            if fuel_display not in fuel_distribution:
+                fuel_distribution[fuel_display] = 0
+            fuel_distribution[fuel_display] += float(record.liters)
+        
+        return jsonify(fuel_distribution)
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 # === TRATAMENTO DE ERROS ===
 
 @app.errorhandler(404)
@@ -1452,8 +2707,188 @@ def create_tables():
         with app.app_context():
             db.create_all()
             print("Tabelas criadas com sucesso!")
+            
+            # Migrar dados de OilChange para MaintenanceRecord se necessário
+            migrate_oil_records_to_maintenance()
+            
     except Exception as e:
         print(f"Erro ao criar tabelas: {e}")
+
+def migrate_oil_records_to_maintenance():
+    """Migra registros de OilChange para MaintenanceRecord"""
+    try:
+        # Verificar se já existem registros migrados
+        existing_oil_maintenance = MaintenanceRecord.query.filter_by(maintenance_type='oil').first()
+        if existing_oil_maintenance:
+            print("Dados de óleo já migrados para MaintenanceRecord")
+            return
+        
+        # Buscar todos os registros de OilChange
+        oil_changes = OilChange.query.all()
+        
+        if not oil_changes:
+            print("Nenhum registro de OilChange para migrar")
+            return
+        
+        migrated_count = 0
+        for oil_change in oil_changes:
+            # Criar novo registro de manutenção
+            maintenance_record = MaintenanceRecord(
+                vehicle_id=oil_change.vehicle_id,
+                date=oil_change.date,
+                maintenance_type='oil',
+                description=f"Troca de óleo migrada - {oil_change.notes or 'Sem observações'}",
+                km_at_service=oil_change.km_at_change,
+                service_interval_km=oil_change.interval_km,
+                service_interval_months=oil_change.interval_months,
+                notes=f"Migrado de OilChange em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}. Notas originais: {oil_change.notes or 'Nenhuma'}",
+                created_at=oil_change.created_at,
+                created_by_voice=False
+            )
+            
+            # Calcular próximo serviço automaticamente
+            maintenance_record.calculate_next_service()
+            
+            db.session.add(maintenance_record)
+            migrated_count += 1
+        
+        db.session.commit()
+        print(f"✅ {migrated_count} registros de óleo migrados para MaintenanceRecord")
+        
+        # OPCIONAL: Manter tabela OilChange para compatibilidade, mas com aviso
+        print("💡 Tabela OilChange mantida para compatibilidade. Use MaintenanceRecord para novos registros.")
+        
+    except Exception as e:
+        print(f"Erro na migração de dados de óleo: {e}")
+        db.session.rollback()
+
+# === ENDPOINT DE RECONHECIMENTO DE VOZ ===
+
+@app.route('/api/ai/voice-command', methods=['POST'])
+@login_required
+def api_voice_command():
+    """API para processar comandos de voz e extrair dados estruturados"""
+    try:
+        data = request.get_json()
+        transcript = data.get('transcript', '').strip()
+        
+        if not transcript:
+            return jsonify({
+                "success": False,
+                "message": "Nenhum texto foi fornecido"
+            })
+        
+        # Processar comando com IA
+        result = ai_service.process_voice_command(transcript, current_user.id)
+        
+        if not result:
+            return jsonify({
+                "success": False, 
+                "message": "Erro ao processar comando. Tente novamente."
+            })
+        
+        # Processar ação sugerida
+        if result['acao_sugerida'] == 'salvar_abastecimento':
+            success = process_fuel_record_from_voice(result['dados_extraidos'], current_user.id)
+            return jsonify({
+                "success": success,
+                "message": result['mensagem_usuario'],
+                "data": result['dados_extraidos'] if success else None,
+                "data_saved": success
+            })
+            
+        elif result['acao_sugerida'] == 'salvar_manutencao':
+            success, message, maintenance_record = process_maintenance_record_from_voice(
+                result['dados_extraidos'], current_user.id
+            )
+            return jsonify({
+                "success": success,
+                "message": message,
+                "data": result['dados_extraidos'] if success else None,
+                "data_saved": success
+            })
+            
+        elif result['acao_sugerida'] == 'responder_consulta':
+            # TODO: Implementar respostas a consultas
+            return jsonify({
+                "success": True,
+                "message": "Consulta processada: " + result['mensagem_usuario']
+            })
+            
+        else:  # pedir_esclarecimento ou desconhecido
+            return jsonify({
+                "success": False,
+                "message": result['mensagem_usuario'] + " Por favor, seja mais específico."
+            })
+        
+    except Exception as e:
+        print(f"Erro no endpoint de comando de voz: {e}")
+        return jsonify({
+            "success": False,
+            "message": "Erro interno. Tente novamente."
+        }), 500
+
+
+def process_fuel_record_from_voice(dados, user_id):
+    """Helper para salvar registro de combustível extraído da voz"""
+    try:
+        # Validar dados mínimos necessários
+        if not dados.get('valor') or not dados.get('tipo_combustivel'):
+            return False
+        
+        # Obter veículo padrão do usuário (primeiro veículo)
+        vehicle = Vehicle.query.filter_by(user_id=user_id).first()
+        if not vehicle:
+            return False
+        
+        # Processar data
+        data_abastecimento = datetime.now().date()
+        if dados.get('data') == 'hoje':
+            data_abastecimento = datetime.now().date()
+        elif dados.get('data') == 'ontem':
+            data_abastecimento = (datetime.now() - timedelta(days=1)).date()
+        elif dados.get('data') == 'anteontem':
+            data_abastecimento = (datetime.now() - timedelta(days=2)).date()
+        # TODO: Processar outras datas formato YYYY-MM-DD
+        
+        # Calcular litros se não fornecido (assumir preço médio)
+        litros = dados.get('litros')
+        if not litros and dados.get('valor'):
+            # Preço médio estimado por tipo de combustível
+            precos_medios = {
+                'gasolina': 5.50,
+                'etanol': 3.80,  
+                'diesel': 5.80,
+                'gnv': 4.20
+            }
+            preco_estimado = precos_medios.get(dados.get('tipo_combustivel'), 5.50)
+            litros = dados['valor'] / preco_estimado
+        
+        # Calcular preço por litro
+        preco_por_litro = dados['valor'] / litros if litros else 5.50
+        
+        # Criar registro
+        fuel_record = FuelRecord(
+            vehicle_id=vehicle.id,
+            date=data_abastecimento,
+            fuel_type=dados['tipo_combustivel'],
+            liters=round(litros, 2) if litros else 0,
+            price_per_liter=round(preco_por_litro, 3),
+            total_cost=round(dados['valor'], 2),
+            gas_station=dados.get('posto', 'Não informado'),
+            odometer_reading=dados.get('quilometragem'),
+            notes=f"Criado por comando de voz: {dados.get('descricao', '')}"
+        )
+        
+        db.session.add(fuel_record)
+        db.session.commit()
+        return True
+        
+    except Exception as e:
+        print(f"Erro ao salvar registro de voz: {e}")
+        db.session.rollback()
+        return False
+
 
 # Para desenvolvimento local
 if __name__ == '__main__':
