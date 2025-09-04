@@ -1607,7 +1607,7 @@ def maintenance_list():
         }
         
         # Buscar veículos do usuário para o formulário
-        user_vehicles = Vehicle.query.filter_by(user_id=current_user.id, active=True).all()
+        user_vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
         
         return render_template('maintenance.html', 
                                maintenance_records=maintenance_records,
@@ -2226,7 +2226,7 @@ def process_maintenance_record_from_voice(voice_data, user_id):
             return False, "Tipo de manutenção não identificado", None
             
         # Obter veículo padrão do usuário (primeiro veículo ativo)
-        vehicle = Vehicle.query.filter_by(user_id=user_id, active=True).first()
+        vehicle = Vehicle.query.filter_by(user_id=user_id, is_active=True).first()
         if not vehicle:
             return False, "Nenhum veículo ativo encontrado", None
             
