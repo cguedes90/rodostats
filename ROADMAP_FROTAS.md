@@ -373,4 +373,195 @@ Foco em alertas inteligentes, relatórios automáticos e refinamento da experiê
 
 ---
 
+## 🔧 CONTEXTO TÉCNICO PARA CONTINUIDADE (LEIA PRIMEIRO)
+
+### **📁 ESTRUTURA DO PROJETO RODOSTATS**
+Este é um sistema Flask de controle de combustível que EVOLUIU para gestão de frotas empresariais.
+
+**🏗️ Arquitetura Atual:**
+- **Framework:** Flask (Python) 
+- **Banco:** PostgreSQL (Neon cloud)
+- **Frontend:** Bootstrap 5 + Jinja2 templates
+- **Hosting:** Vercel
+- **IA:** Groq (gratuito) para comandos de voz
+- **Estrutura:** Monolito modular
+
+### **📊 MODELOS DE DADOS PRINCIPAIS (app.py)**
+
+#### **✅ MODELOS JÁ IMPLEMENTADOS E FUNCIONANDO:**
+```python
+# USUÁRIOS E AUTENTICAÇÃO (linha ~100-150)
+class User(db.Model, UserMixin):
+    # Usuário base do sistema (PF + Empresarial)
+
+# VEÍCULOS (linha ~150-250) 
+class Vehicle(db.Model):
+    # EXPANDIDO com campos: fleet_id, driver_id, vehicle_type, department
+    # ⚠️ ATENÇÃO: usar is_active (não 'active')
+
+# COMBUSTÍVEL (linha ~250-300)
+class FuelRecord(db.Model):
+    # Registros de abastecimento com IA
+
+# MANUTENÇÃO (linha ~300-400) - IMPLEMENTADO RECENTEMENTE
+class MaintenanceRecord(db.Model):
+    # Sistema completo de manutenção (substitui OilChange)
+
+# ⭐ FROTAS - IMPLEMENTADO HOJE (linha ~400-600)
+class Fleet(db.Model):
+    # Empresas com trials, planos, limites
+    
+class FleetMember(db.Model):
+    # Usuários da empresa com roles: owner/admin/manager/user
+    
+class Driver(db.Model):
+    # Motoristas vinculados a veículos
+```
+
+#### **❌ MODELOS ANTIGOS (NÃO USAR MAIS):**
+- `OilChange` → Substituído por `MaintenanceRecord`
+
+### **🎯 SISTEMA DE PERMISSÕES (RBAC)**
+```python
+# Hierarquia implementada:
+- owner: Dono da empresa (todos os poderes)
+- admin: Administrador (gerenciar usuários + veículos)  
+- manager: Gerente (visualizar relatórios)
+- user: Usuário comum (registrar combustível)
+
+# Métodos no FleetMember:
+- can_manage_users()
+- can_manage_vehicles()
+- can_view_reports()
+```
+
+### **🗂️ TEMPLATES PRINCIPAIS**
+
+#### **✅ TEMPLATES FUNCIONANDO:**
+- `base.html` - Layout principal
+- `dashboard.html` - Dashboard individual (PF)
+- `vehicles.html` - Gestão de veículos
+- `maintenance.html` - Manutenção (implementado hoje)
+- `fuel_records.html` - Registros de combustível
+
+#### **⭐ TEMPLATES FROTAS (IMPLEMENTADOS HOJE):**
+- `fleet_register.html` - Registro empresarial
+- `fleet_dashboard.html` - Dashboard executivo 
+- `fleet_members.html` - Gestão de membros
+
+### **🚀 ROTAS PRINCIPAIS (app.py)**
+
+#### **✅ ROTAS FUNCIONANDO:**
+```python
+# Autenticação
+@app.route('/login')
+@app.route('/register')  
+
+# Dashboard Individual
+@app.route('/')
+@app.route('/dashboard')
+
+# Veículos
+@app.route('/vehicles')
+@app.route('/vehicles/add')
+
+# Combustível  
+@app.route('/fuel_records')
+@app.route('/fuel_records/add')
+
+# Manutenção (implementado hoje)
+@app.route('/maintenance')
+
+# ⭐ FROTAS (implementadas hoje - linha ~1500-2000)
+@app.route('/fleet/register')
+@app.route('/fleet/dashboard') 
+@app.route('/fleet/members')
+```
+
+### **🤖 SISTEMA DE IA (GROQ)**
+```python
+# Função principal (linha ~800-1000):
+def process_voice_command(audio_text):
+    # Processa comandos de voz para combustível
+
+def process_maintenance_record_from_voice(audio_text):
+    # Processa comandos de manutenção (implementado hoje)
+    
+# ⚠️ IMPORTANTE: IA já funciona para:
+# - Registros de combustível
+# - Registros de manutenção  
+# - Linguagem: Português brasileiro
+```
+
+### **💾 BANCO DE DADOS (NEON POSTGRESQL)**
+```
+# Status das tabelas:
+✅ users - Funcionando
+✅ vehicles - Funcionando (expandido hoje) 
+✅ fuel_records - Funcionando
+✅ maintenance_records - Implementado hoje
+⭐ fleets - Implementado hoje
+⭐ fleet_members - Implementado hoje  
+⭐ drivers - Implementado hoje
+❌ oil_changes - DEPRECATED (não usar)
+```
+
+### **🔄 EVOLUÇÃO DO SISTEMA**
+**Era 1 (Original):** Sistema individual de controle de combustível
+**Era 2 (Hoje):** Sistema empresarial com multi-tenancy
+**Era 3 (Amanhã):** Alertas + Relatórios + Integrações
+
+### **⚠️ COISAS IMPORTANTES PARA NÃO QUEBRAR**
+
+#### **🚨 PONTOS DE ATENÇÃO:**
+1. **CSRF Tokens:** Este projeto NÃO usa Flask-WTF, não adicionar `{{ csrf_token() }}`
+2. **Propriedades:** Usar `is_active` não `active` nos modelos
+3. **Multi-tenancy:** Todo modelo empresarial deve ter `fleet_id`
+4. **Permissions:** Sempre verificar roles antes de permitir ações
+5. **Templates:** Manter padrão Bootstrap 5 + Font Awesome
+
+#### **✅ PADRÕES ESTABELECIDOS:**
+- **Idioma:** Português brasileiro em toda interface
+- **Design:** Bootstrap 5 com gradientes e ícones
+- **IA:** Groq com prompts em português  
+- **Rotas:** Snake_case para URLs
+- **CSS:** Inline nos templates (não arquivo separado)
+
+### **📋 TODO PARA AMANHÃ (FASE 2)**
+```
+PRIORIDADE ALTA:
+1. Implementar envio real de emails (convites)
+2. Sistema de alertas inteligentes
+3. Geração automática de PDFs
+4. Ranking refinado de motoristas
+
+PRIORIDADE MÉDIA:
+5. Testes de integração
+6. Otimizações de performance  
+7. Melhorias de UX
+
+NÃO FAZER:
+❌ Não modificar sistema atual de PF (funciona)
+❌ Não quebrar autenticação existente
+❌ Não alterar estrutura de templates base
+```
+
+### **🐛 BUGS CONHECIDOS RESOLVIDOS**
+- ✅ Error "entity namespace 'active'" → Corrigido (usar is_active)
+- ✅ Error "csrf_token undefined" → Corrigido (removido)
+- ✅ Templates de frota → Implementados e funcionando
+
+### **🔌 INTEGRAÇÕES ATIVAS**
+- **Groq API:** Para processamento de voz (gratuito)
+- **Neon PostgreSQL:** Banco cloud (gratuito)
+- **Vercel:** Hosting (gratuito)
+- **GitHub:** Repositório https://github.com/cguedes90/rodostats
+
+---
+
+**📝 RESUMO PARA AMANHÃ:**
+Este é o RodoStats - sistema que começou como controle individual de combustível e hoje se tornou plataforma completa B2B de gestão de frotas. A Fase 1 (fundação) está 100% implementada. Amanhã começamos Fase 2 (gestão avançada) com foco em alertas, relatórios e refinamentos. TUDO funciona, não quebrar nada existente.
+
+---
+
 *Este roadmap é um documento vivo e será atualizado conforme o progresso do desenvolvimento e feedback dos stakeholders.*
