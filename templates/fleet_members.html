@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Membros da Frota - {{ fleet.company_name }}{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text">
+                    <i class="fas fa-users me-2"></i>Membros da Frota
+                </h1>
+                <p class="text-muted mb-0">
+                    {{ fleet.company_name }} • {{ members|length }}/{{ fleet.max_users }} membros
+                </p>
+            </div>
+            <div>
+                <a href="{{ url_for('fleet_dashboard') }}" class="btn btn-outline-secondary me-2">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard
+                </a>
+                {% if current_membership.can_manage_users and fleet.can_add_member() %}
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#inviteModal">
+                        <i class="fas fa-user-plus me-1"></i>Convidar Membro
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Membros -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Membros Ativos
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if members %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th><i class="fas fa-user me-1"></i>Usuário</th>
+                                    <th><i class="fas fa-shield-alt me-1"></i>Cargo</th>
+                                    <th><i class="fas fa-calendar me-1"></i>Membro desde</th>
+                                    <th><i class="fas fa-user-check me-1"></i>Convidado por</th>
+                                    <th><i class="fas fa-cogs me-1"></i>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for member in members %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-primary text-white me-3">
+                                                {{ member.user.username[0].upper() }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ member.user.username }}</strong>
+                                                <br><small class="text-muted">{{ member.user.email }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge 
+                                            {% if member.role == 'owner' %}bg-danger
+                                            {% elif member.role == 'admin' %}bg-warning
+                                            {% elif member.role == 'manager' %}bg-info
+                                            {% else %}bg-secondary{% endif %}">
+                                            <i class="
+                                                {% if member.role == 'owner' %}fas fa-crown
+                                                {% elif member.role == 'admin' %}fas fa-user-shield
+                                                {% elif member.role == 'manager' %}fas fa-user-tie
+                                                {% else %}fas fa-user{% endif %} me-1"></i>
+                                            {{ member.role.title() }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <small>{{ member.joined_at.strftime('%d/%m/%Y') }}</small>
+                                    </td>
+                                    <td>
+                                        {% if member.inviter %}
+                                            <small class="text-muted">{{ member.inviter.username }}</small>
+                                        {% else %}
+                                            <small class="text-muted">Fundador</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if current_membership.can_manage_users and member.user.id != current_user.id %}
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                        onclick="editMember({{ member.id }}, '{{ member.role }}')">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                {% if member.role != 'owner' %}
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                                            onclick="removeMember({{ member.id }}, '{{ member.user.username }}')">
+                                                        <i class="fas fa-times"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Nenhum membro encontrado</h5>
+                        <p class="text-muted">Comece convidando membros para sua frota.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Convite -->
+{% if current_membership.can_manage_users %}
+<div class="modal fade" id="inviteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Convidar Novo Membro
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="inviteForm">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="invite_email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="invite_email" required 
+                               placeholder="usuario@empresa.com">
+                    </div>
+                    <div class="mb-3">
+                        <label for="invite_role" class="form-label">Cargo *</label>
+                        <select class="form-select" id="invite_role" required>
+                            <option value="">Selecione o cargo</option>
+                            <option value="user">Usuário</option>
+                            <option value="manager">Gerente</option>
+                            {% if current_membership.role == 'owner' %}
+                                <option value="admin">Administrador</option>
+                            {% endif %}
+                        </select>
+                        <div class="form-text">
+                            <strong>Usuário:</strong> Acesso básico<br>
+                            <strong>Gerente:</strong> Visualizar relatórios<br>
+                            <strong>Admin:</strong> Gerenciar usuários e veículos
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-envelope me-1"></i>Enviar Convite
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Convidar membro
+document.getElementById('inviteForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const email = document.getElementById('invite_email').value;
+    const role = document.getElementById('invite_role').value;
+    
+    // TODO: Implementar envio de convite via AJAX
+    alert('Funcionalidade de convite será implementada em breve!\nEmail: ' + email + '\nCargo: ' + role);
+    
+    // Fechar modal
+    bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+});
+
+// Editar membro
+function editMember(memberId, currentRole) {
+    const newRole = prompt('Novo cargo para o membro:', currentRole);
+    if (newRole && newRole !== currentRole) {
+        // TODO: Implementar edição via AJAX
+        alert('Funcionalidade de edição será implementada em breve!\nNovo cargo: ' + newRole);
+    }
+}
+
+// Remover membro
+function removeMember(memberId, username) {
+    if (confirm(`Tem certeza que deseja remover ${username} da frota?`)) {
+        // TODO: Implementar remoção via AJAX
+        alert('Funcionalidade de remoção será implementada em breve!');
+    }
+}
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #007bff, #28a745);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.card {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    border: 1px solid rgba(0, 0, 0, 0.125);
+}
+
+.table th {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.badge {
+    font-size: 0.8rem;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .btn-group .btn {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+{% endblock %}
