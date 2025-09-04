@@ -2,6 +2,30 @@
 
 {% block content %}
 <div class="container mt-4">
+    <!-- Gráficos de Distribuição -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Distribuição de Combustível</h5>
+                </div>
+                <div class="card-body text-center">
+                    <canvas id="fuelChart" width="300" height="300" style="max-width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Gastos Mensais</h5>
+                </div>
+                <div class="card-body text-center">
+                    <canvas id="expenseChart" width="400" height="300" style="max-width: 100%;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="row">
         <div class="col-md-8">
             <div class="card">
@@ -41,8 +65,16 @@
             </div>
 
             <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="mb-0"><i class="fas fa-history"></i> Histórico de Abastecimentos</h5>
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Últimos Abastecimentos</h5>
+                    <div>
+                        <a href="#" class="btn btn-success btn-sm me-2">
+                            <i class="fas fa-file-csv me-1"></i>CSV
+                        </a>
+                        <a href="#" class="btn btn-primary btn-sm">
+                            <i class="fas fa-file-pdf me-1"></i>Relatório
+                        </a>
+                    </div>
                 </div>
                 <div class="card-body">
                     {% if records %}
@@ -118,4 +150,55 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+setTimeout(function() {
+    console.log('Iniciando criação dos gráficos...');
+    
+    try {
+        // Gráfico de Pizza
+        const fuelCtx = document.getElementById('fuelChart');
+        if (fuelCtx && typeof Chart !== 'undefined') {
+            console.log('Criando gráfico de combustível...');
+            new Chart(fuelCtx, {
+                type: 'pie',
+                data: {
+                    labels: ['Gasolina', 'Etanol', 'Diesel'],
+                    datasets: [{
+                        data: [50, 30, 20],
+                        backgroundColor: ['#ff6b6b', '#4ecdc4', '#45b7d1']
+                    }]
+                }
+            });
+            console.log('✅ Gráfico de pizza criado!');
+        } else {
+            console.log('❌ Canvas fuelChart não encontrado ou Chart.js não carregado');
+        }
+
+        // Gráfico de Linha
+        const expenseCtx = document.getElementById('expenseChart');
+        if (expenseCtx && typeof Chart !== 'undefined') {
+            console.log('Criando gráfico de gastos...');
+            new Chart(expenseCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai'],
+                    datasets: [{
+                        data: [400, 300, 500, 350, 450],
+                        backgroundColor: '#45b7d1'
+                    }]
+                }
+            });
+            console.log('✅ Gráfico de barras criado!');
+        } else {
+            console.log('❌ Canvas expenseChart não encontrado ou Chart.js não carregado');
+        }
+
+    } catch(error) {
+        console.error('Erro ao criar gráficos:', error);
+    }
+}, 2000);
+</script>
 {% endblock %}

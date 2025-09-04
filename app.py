@@ -780,7 +780,7 @@ class Alert(db.Model):
     message = db.Column(db.Text, nullable=False)
     
     # Dados relacionados (JSON para flexibilidade)
-    metadata = db.Column(db.JSON, nullable=True)
+    alert_data = db.Column(db.JSON, nullable=True)
     
     # Status do alerta
     is_active = db.Column(db.Boolean, default=True)
@@ -1001,7 +1001,7 @@ def create_alert(user_id=None, fleet_id=None, vehicle_id=None, alert_type='info'
             severity=severity,
             title=title,
             message=message,
-            metadata=metadata or {}
+            alert_data=metadata or {}
         )
         
         db.session.add(alert)
@@ -1079,7 +1079,7 @@ def check_fuel_anomalies():
                             message=f'O veículo {vehicle.name} está consumindo {deviation:.1f}% mais combustível que o normal. '
                                   f'Consumo atual: {recent_avg:.1f} km/L vs média histórica: {historical_avg:.1f} km/L. '
                                   f'Recomendamos verificar filtros, pneus e agendar manutenção preventiva.',
-                            metadata={
+                            alert_data={
                                 'recent_consumption': recent_avg,
                                 'historical_consumption': historical_avg,
                                 'deviation_percentage': deviation,
@@ -1175,7 +1175,7 @@ def check_maintenance_alerts():
                         severity=severity,
                         title=title,
                         message=message,
-                        metadata={
+                        alert_data={
                             'last_maintenance_date': last_maintenance.date.isoformat(),
                             'last_maintenance_type': last_maintenance.service_type,
                             'days_since_maintenance': days_since_maintenance,
@@ -1213,7 +1213,7 @@ def check_maintenance_alerts():
                         title=f'📋 Registre a primeira manutenção - {vehicle.name}',
                         message=f'O veículo {vehicle.name} não possui registros de manutenção. '
                                f'Registre a primeira manutenção para receber alertas preventivos personalizados.',
-                        metadata={
+                        alert_data={
                             'vehicle_age_months': (today - vehicle.created_at.date()).days // 30,
                             'has_maintenance_records': False
                         }
