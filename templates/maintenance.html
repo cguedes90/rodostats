@@ -227,7 +227,6 @@
             </div>
             <form id="maintenanceForm" method="POST" action="/maintenance">
                 <div class="modal-body">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <input type="hidden" name="id" id="maintenance_id"/>
                     
                     <div class="row">
@@ -367,7 +366,7 @@ function deleteMaintenance(id) {
         fetch(`/maintenance/${id}`, {
             method: 'DELETE',
             headers: {
-                'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                'Content-Type': 'application/json'
             }
         }).then(response => {
             if (response.ok) {
@@ -402,8 +401,7 @@ document.getElementById('voiceBtn').addEventListener('click', function() {
             fetch('/api/voice_command', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({command: command})
             })
