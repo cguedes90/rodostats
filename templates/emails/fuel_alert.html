@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerta de Consumo - Rodo Stats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #e74c3c;
+            border-bottom: 3px solid #e74c3c;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .alert-box {
+            background: #fff5f5;
+            border-left: 4px solid #e74c3c;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .stats {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚨 Alerta de Consumo{% if is_fleet %} - Frota{% endif %}</h1>
+        </div>
+        
+        <p>Olá {{ user_name }},</p>
+        
+        <div class="alert-box">
+            <h3>⚠️ Consumo elevado detectado</h3>
+            <p>{% if is_fleet %}O veículo da frota <strong>{{ fleet_name }}</strong>{% else %}Seu veículo{% endif %} <strong>{{ vehicle_name }}</strong> está consumindo mais combustível que o normal.</p>
+        </div>
+        
+        <div class="stats">
+            <h4>📊 Dados do consumo:</h4>
+            <ul>
+                <li><strong>Desvio:</strong> {{ "%.1f"|format(deviation) }}% acima do normal</li>
+                <li><strong>Consumo atual:</strong> {{ "%.1f"|format(recent_avg) }} km/L</li>
+                <li><strong>Média histórica:</strong> {{ "%.1f"|format(historical_avg) }} km/L</li>
+            </ul>
+        </div>
+        
+        <h4>🔧 Recomendações:</h4>
+        <ul>
+            <li>Verificar filtro de ar e combustível</li>
+            <li>Conferir calibragem dos pneus</li>
+            <li>Agendar manutenção preventiva</li>
+            <li>Revisar estilo de condução</li>
+        </ul>
+        
+        {% if is_fleet %}
+        <p><strong>💡 Dica:</strong> Acesse o dashboard da frota para ver mais detalhes e comparativos entre veículos.</p>
+        {% else %}
+        <p><strong>💡 Dica:</strong> Acesse o Rodo Stats para registrar a manutenção e acompanhar a melhoria do consumo.</p>
+        {% endif %}
+        
+        <div class="footer">
+            <p><strong>Rodo Stats</strong> - Gestão Inteligente de Combustível</p>
+            <p>© {{ current_year }} InovaMente Labs. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

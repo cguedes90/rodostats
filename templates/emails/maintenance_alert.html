@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerta de Manutenção - Rodo Stats</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            color: #f39c12;
+            border-bottom: 3px solid #f39c12;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+        .alert-box {
+            background: #fefcf3;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 15px 0;
+        }
+        .urgent {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            color: #666;
+            font-size: 12px;
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 Alerta de Manutenção{% if is_fleet %} - Frota{% endif %}</h1>
+        </div>
+        
+        <p>Olá {{ user_name }},</p>
+        
+        <div class="alert-box">
+            <h3>⚠️ Manutenção vencida</h3>
+            <p>{% if is_fleet %}O veículo da frota <strong>{{ fleet_name }}</strong>{% else %}Seu veículo{% endif %} <strong>{{ vehicle_name }}</strong> está com manutenção vencida.</p>
+        </div>
+        
+        <div class="info-box">
+            <h4>📋 Detalhes da manutenção:</h4>
+            <ul>
+                <li><strong>Vencida há:</strong> <span class="urgent">{{ days_overdue }} dias</span></li>
+                <li><strong>Último serviço:</strong> {{ last_maintenance_type }}</li>
+                <li><strong>Data do último serviço:</strong> {{ last_maintenance_date }}</li>
+            </ul>
+        </div>
+        
+        <h4>🚨 Ação necessária:</h4>
+        <p>A manutenção preventiva é essencial para:</p>
+        <ul>
+            <li>Evitar problemas maiores e mais caros</li>
+            <li>Manter a segurança do veículo</li>
+            <li>Preservar a eficiência de combustível</li>
+            <li>Garantir a vida útil do veículo</li>
+        </ul>
+        
+        <p><strong class="urgent">📞 Recomendação: Agende uma revisão imediatamente!</strong></p>
+        
+        {% if is_fleet %}
+        <p><strong>💡 Dica:</strong> Acesse o dashboard da frota para gerenciar as manutenções de todos os veículos.</p>
+        {% else %}
+        <p><strong>💡 Dica:</strong> Acesse o Rodo Stats para registrar a manutenção após realizada.</p>
+        {% endif %}
+        
+        <div class="footer">
+            <p><strong>Rodo Stats</strong> - Gestão Inteligente de Frotas</p>
+            <p>© {{ current_year }} InovaMente Labs. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

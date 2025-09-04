@@ -138,6 +138,11 @@
             <form id="inviteForm">
                 <div class="modal-body">
                     <div class="mb-3">
+                        <label for="invite_name" class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="invite_name" 
+                               placeholder="João Silva (opcional)">
+                    </div>
+                    <div class="mb-3">
                         <label for="invite_email" class="form-label">Email *</label>
                         <input type="email" class="form-control" id="invite_email" required 
                                placeholder="usuario@empresa.com">
@@ -158,6 +163,11 @@
                             <strong>Admin:</strong> Gerenciar usuários e veículos
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="invite_message" class="form-label">Mensagem personalizada</label>
+                        <textarea class="form-control" id="invite_message" rows="3" 
+                                  placeholder="Mensagem de boas-vindas (opcional)"></textarea>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -176,14 +186,67 @@
 document.getElementById('inviteForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const email = document.getElementById('invite_email').value;
-    const role = document.getElementById('invite_role').value;
+    const formData = new FormData();
+    formData.append('name', document.getElementById('invite_name').value);
+    formData.append('email', document.getElementById('invite_email').value);
+    formData.append('role', document.getElementById('invite_role').value);
+    formData.append('message', document.getElementById('invite_message').value);
     
-    // TODO: Implementar envio de convite via AJAX
-    alert('Funcionalidade de convite será implementada em breve!\nEmail: ' + email + '\nCargo: ' + role);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
     
-    // Fechar modal
-    bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+    // Desabilitar botão e mostrar loading
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enviando...';
+    
+    fetch('/fleet/send_invite', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Mostrar sucesso
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="fas fa-check-circle me-1"></i>${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.container-fluid').firstChild);
+            
+            // Fechar modal e limpar form
+            bootstrap.Modal.getInstance(document.getElementById('inviteModal')).hide();
+            this.reset();
+            
+            // Recarregar página após 2s para mostrar novo convite pendente
+            setTimeout(() => location.reload(), 2000);
+        } else {
+            // Mostrar erro
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle me-1"></i>${data.message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.modal-body').insertBefore(alertDiv, document.querySelector('.modal-body').firstChild);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle me-1"></i>Erro ao enviar convite. Tente novamente.
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.modal-body').insertBefore(alertDiv, document.querySelector('.modal-body').firstChild);
+    })
+    .finally(() => {
+        // Reabilitar botão
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    });
 });
 
 // Editar membro
@@ -202,6 +265,13 @@ function removeMember(memberId, username) {
         alert('Funcionalidade de remoção será implementada em breve!');
     }
 }
+
+// Limpar modal ao fechar
+document.getElementById('inviteModal')?.addEventListener('hidden.bs.modal', function() {
+    const alerts = this.querySelectorAll('.alert');
+    alerts.forEach(alert => alert.remove());
+    this.querySelector('form').reset();
+});
 </script>
 
 <style>

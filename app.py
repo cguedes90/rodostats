@@ -52,12 +52,12 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 db = SQLAlchemy(app)
 
 # Configuração do Flask-Mail
-app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
+app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.zoho.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', '587'))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'true').lower() in ['true', 'on', '1']
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', '')
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'contato@inovamentelabs.com.br')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', '')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'noreply@rodostats.com')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'contato@inovamentelabs.com.br')
 
 mail = Mail(app)
 
@@ -72,6 +72,16 @@ if groq_client:
     print("[OK] Groq IA configurado com sucesso (GRATUITO!)")
 else:
     print("[AVISO] Groq IA nao disponivel")
+
+# === MIDDLEWARE HTTPS ===
+
+@app.before_request
+def force_https():
+    """Força HTTPS em produção"""
+    if not request.is_secure and app.config.get('FLASK_ENV') == 'production':
+        # Verificar se não é localhost/desenvolvimento
+        if 'localhost' not in request.host and '127.0.0.1' not in request.host:
+            return redirect(request.url.replace('http://', 'https://'), code=301)
 
 # === FUNÇÕES DE EMAIL ===
 
@@ -710,6 +720,112 @@ class FuelRecord(db.Model):
         
         return distance / self.liters
 
+class FleetInvite(db.Model):
+    __tablename__ = 'fleet_invites'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fleet_id = db.Column(db.Integer, db.ForeignKey('fleets.id'), nullable=False)
+    inviter_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Dados do convidado
+    email = db.Column(db.String(120), nullable=False)
+    name = db.Column(db.String(100), nullable=True)
+    role = db.Column(db.String(20), nullable=False, default='user')  # owner, admin, manager, user
+    message = db.Column(db.Text, nullable=True)
+    
+    # Controle do convite
+    token = db.Column(db.String(100), unique=True, nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(20), default='pending')  # pending, accepted, expired, cancelled
+    
+    # Metadados
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    accepted_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relacionamentos
+    fleet = db.relationship('Fleet', backref='invites')
+    inviter = db.relationship('User', backref='sent_invites')
+    
+    def __repr__(self):
+        return f'<FleetInvite {self.email} -> {self.fleet.name}>'
+    
+    @property
+    def is_expired(self):
+        """Verifica se o convite expirou"""
+        return datetime.utcnow() > self.expires_at
+    
+    def generate_token(self):
+        """Gera um token único para o convite"""
+        import secrets
+        self.token = secrets.token_urlsafe(32)
+    
+    def get_accept_url(self, base_url=None):
+        """Gera URL de aceite do convite"""
+        if not base_url:
+            base_url = 'https://rodostats.vercel.app'
+        return f"{base_url}/fleet/accept_invite/{self.token}"
+
+class Alert(db.Model):
+    __tablename__ = 'alerts'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Null para alertas de frota
+    fleet_id = db.Column(db.Integer, db.ForeignKey('fleets.id'), nullable=True)  # Null para alertas individuais
+    vehicle_id = db.Column(db.Integer, db.ForeignKey('vehicles.id'), nullable=True)
+    
+    # Tipo e conteúdo do alerta
+    alert_type = db.Column(db.String(50), nullable=False)  # 'fuel_anomaly', 'maintenance_due', 'budget_exceeded', etc
+    severity = db.Column(db.String(20), default='info')  # 'critical', 'warning', 'info'
+    title = db.Column(db.String(200), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    
+    # Dados relacionados (JSON para flexibilidade)
+    metadata = db.Column(db.JSON, nullable=True)
+    
+    # Status do alerta
+    is_active = db.Column(db.Boolean, default=True)
+    is_read = db.Column(db.Boolean, default=False)
+    dismissed_at = db.Column(db.DateTime, nullable=True)
+    dismissed_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # Metadados
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Relacionamentos
+    user = db.relationship('User', foreign_keys=[user_id], backref='alerts')
+    fleet = db.relationship('Fleet', backref='alerts')
+    vehicle = db.relationship('Vehicle', backref='alerts')
+    dismissed_by_user = db.relationship('User', foreign_keys=[dismissed_by])
+    
+    def __repr__(self):
+        return f'<Alert {self.title}>'
+    
+    @property
+    def icon(self):
+        """Ícone baseado no tipo do alerta"""
+        icon_map = {
+            'fuel_anomaly': 'fas fa-exclamation-triangle text-warning',
+            'maintenance_due': 'fas fa-wrench text-danger',
+            'maintenance_overdue': 'fas fa-tools text-danger',
+            'budget_exceeded': 'fas fa-money-bill-wave text-danger',
+            'efficiency_drop': 'fas fa-chart-line text-warning',
+            'new_member': 'fas fa-user-plus text-success',
+            'system': 'fas fa-cog text-info'
+        }
+        return icon_map.get(self.alert_type, 'fas fa-bell text-primary')
+    
+    def mark_as_read(self):
+        """Marcar alerta como lido"""
+        self.is_read = True
+        db.session.commit()
+    
+    def dismiss(self, user_id):
+        """Dispensar alerta"""
+        self.is_active = False
+        self.dismissed_at = datetime.utcnow()
+        self.dismissed_by = user_id
+        db.session.commit()
+
 @login_manager.user_loader
 def load_user(user_id):
     print(f"[LOAD_USER] Tentando carregar usuário com ID: {user_id}")
@@ -871,6 +987,352 @@ def calculate_fuel_efficiency(vehicle_id):
         'has_data': True
     }
 
+# === SISTEMA DE ALERTAS INTELIGENTES ===
+
+def create_alert(user_id=None, fleet_id=None, vehicle_id=None, alert_type='info', 
+                 severity='info', title='', message='', metadata=None):
+    """Criar novo alerta no sistema"""
+    try:
+        alert = Alert(
+            user_id=user_id,
+            fleet_id=fleet_id,
+            vehicle_id=vehicle_id,
+            alert_type=alert_type,
+            severity=severity,
+            title=title,
+            message=message,
+            metadata=metadata or {}
+        )
+        
+        db.session.add(alert)
+        db.session.commit()
+        
+        print(f"[ALERT] ✅ Alerta criado: {title} ({alert_type})")
+        return alert
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ALERT] ❌ Erro ao criar alerta: {str(e)}")
+        return None
+
+def check_fuel_anomalies():
+    """Verificar anomalias de consumo para todos os veículos"""
+    try:
+        print("[ALERT] 🔍 Verificando anomalias de combustível...")
+        
+        # Buscar todos os veículos com dados suficientes
+        vehicles = Vehicle.query.filter_by(is_active=True).all()
+        alerts_created = 0
+        
+        for vehicle in vehicles:
+            # Calcular eficiência atual vs histórica
+            efficiency_data = calculate_fuel_efficiency(vehicle.id)
+            
+            if not efficiency_data.get('has_data') or len(vehicle.fuel_records) < 5:
+                continue
+            
+            # Buscar últimos 3 registros
+            recent_records = FuelRecord.query.filter_by(vehicle_id=vehicle.id)\
+                .order_by(FuelRecord.date.desc()).limit(3).all()
+            
+            if len(recent_records) < 3:
+                continue
+            
+            # Calcular consumo médio dos últimos registros
+            recent_consumptions = []
+            for record in recent_records:
+                consumption = record.consumption()
+                if consumption > 0:
+                    recent_consumptions.append(consumption)
+            
+            if not recent_consumptions:
+                continue
+                
+            recent_avg = sum(recent_consumptions) / len(recent_consumptions)
+            historical_avg = efficiency_data['average_consumption']
+            
+            # Verificar se há anomalia (consumo 20% pior que a média)
+            if recent_avg > 0 and historical_avg > 0:
+                deviation = ((historical_avg - recent_avg) / historical_avg) * 100
+                
+                if deviation > 20:  # Consumo 20% pior
+                    # Verificar se já existe alerta similar recente (últimos 7 dias)
+                    existing_alert = Alert.query.filter(
+                        Alert.vehicle_id == vehicle.id,
+                        Alert.alert_type == 'fuel_anomaly',
+                        Alert.is_active == True,
+                        Alert.created_at >= datetime.utcnow() - timedelta(days=7)
+                    ).first()
+                    
+                    if not existing_alert:
+                        # Determinar se é para usuário individual ou frota
+                        user_id = vehicle.user_id if not vehicle.fleet_id else None
+                        fleet_id = vehicle.fleet_id
+                        
+                        alert = create_alert(
+                            user_id=user_id,
+                            fleet_id=fleet_id,
+                            vehicle_id=vehicle.id,
+                            alert_type='fuel_anomaly',
+                            severity='warning',
+                            title=f'🚨 Consumo elevado - {vehicle.name}',
+                            message=f'O veículo {vehicle.name} está consumindo {deviation:.1f}% mais combustível que o normal. '
+                                  f'Consumo atual: {recent_avg:.1f} km/L vs média histórica: {historical_avg:.1f} km/L. '
+                                  f'Recomendamos verificar filtros, pneus e agendar manutenção preventiva.',
+                            metadata={
+                                'recent_consumption': recent_avg,
+                                'historical_consumption': historical_avg,
+                                'deviation_percentage': deviation,
+                                'records_analyzed': len(recent_consumptions)
+                            }
+                        )
+                        
+                        if alert:
+                            alerts_created += 1
+                            
+                            # Enviar notificação por email se for crítico (>30%)
+                            if deviation > 30:
+                                send_fuel_anomaly_email(vehicle, deviation, recent_avg, historical_avg)
+        
+        print(f"[ALERT] ✅ Verificação de combustível concluída. {alerts_created} alertas criados.")
+        return alerts_created
+        
+    except Exception as e:
+        print(f"[ALERT] ❌ Erro ao verificar anomalias: {str(e)}")
+        return 0
+
+def check_maintenance_alerts():
+    """Verificar alertas de manutenção vencida ou próxima"""
+    try:
+        print("[ALERT] 🔧 Verificando alertas de manutenção...")
+        
+        alerts_created = 0
+        today = datetime.now().date()
+        
+        # Buscar todos os veículos ativos
+        vehicles = Vehicle.query.filter_by(is_active=True).all()
+        
+        for vehicle in vehicles:
+            # Buscar última manutenção
+            last_maintenance = MaintenanceRecord.query.filter_by(
+                vehicle_id=vehicle.id
+            ).order_by(MaintenanceRecord.date.desc()).first()
+            
+            if last_maintenance:
+                days_since_maintenance = (today - last_maintenance.date).days
+                
+                # Alertas baseados no tipo de manutenção
+                maintenance_intervals = {
+                    'oil_change': 90,      # 3 meses
+                    'tire_rotation': 180,  # 6 meses  
+                    'brake_service': 365,  # 1 ano
+                    'general_service': 180 # 6 meses
+                }
+                
+                interval = maintenance_intervals.get(last_maintenance.service_type, 180)
+                days_until_next = interval - days_since_maintenance
+                
+                # Verificar alertas existentes
+                existing_alert = Alert.query.filter(
+                    Alert.vehicle_id == vehicle.id,
+                    Alert.alert_type.in_(['maintenance_due', 'maintenance_overdue']),
+                    Alert.is_active == True,
+                    Alert.created_at >= datetime.utcnow() - timedelta(days=7)
+                ).first()
+                
+                alert_needed = False
+                alert_type = 'maintenance_due'
+                severity = 'info'
+                title = ''
+                message = ''
+                
+                if days_until_next <= -7:  # Vencida há mais de 7 dias
+                    alert_type = 'maintenance_overdue'
+                    severity = 'critical'
+                    title = f'🚨 Manutenção vencida - {vehicle.name}'
+                    message = f'A manutenção do veículo {vehicle.name} está vencida há {abs(days_until_next)} dias. ' \
+                             f'Última manutenção: {last_maintenance.service_type} em {last_maintenance.date.strftime("%d/%m/%Y")}. ' \
+                             f'Agende uma revisão imediatamente para evitar problemas maiores.'
+                    alert_needed = True
+                elif days_until_next <= 7 and days_until_next > -7:  # Próxima em até 7 dias
+                    alert_type = 'maintenance_due'
+                    severity = 'warning'
+                    title = f'⚠️ Manutenção próxima - {vehicle.name}'
+                    message = f'A manutenção do veículo {vehicle.name} está próxima (em {days_until_next} dias). ' \
+                             f'Última manutenção: {last_maintenance.service_type} em {last_maintenance.date.strftime("%d/%m/%Y")}. ' \
+                             f'Recomendamos agendar uma revisão preventiva.'
+                    alert_needed = True
+                
+                if alert_needed and not existing_alert:
+                    user_id = vehicle.user_id if not vehicle.fleet_id else None
+                    fleet_id = vehicle.fleet_id
+                    
+                    alert = create_alert(
+                        user_id=user_id,
+                        fleet_id=fleet_id,
+                        vehicle_id=vehicle.id,
+                        alert_type=alert_type,
+                        severity=severity,
+                        title=title,
+                        message=message,
+                        metadata={
+                            'last_maintenance_date': last_maintenance.date.isoformat(),
+                            'last_maintenance_type': last_maintenance.service_type,
+                            'days_since_maintenance': days_since_maintenance,
+                            'days_until_next': days_until_next,
+                            'recommended_interval': interval
+                        }
+                    )
+                    
+                    if alert:
+                        alerts_created += 1
+                        
+                        # Enviar email se crítico
+                        if severity == 'critical':
+                            send_maintenance_alert_email(vehicle, days_until_next, last_maintenance)
+            
+            else:
+                # Veículo sem manutenção registrada - alerta informativo
+                existing_alert = Alert.query.filter(
+                    Alert.vehicle_id == vehicle.id,
+                    Alert.alert_type == 'maintenance_due',
+                    Alert.is_active == True,
+                    Alert.created_at >= datetime.utcnow() - timedelta(days=30)
+                ).first()
+                
+                if not existing_alert:
+                    user_id = vehicle.user_id if not vehicle.fleet_id else None
+                    fleet_id = vehicle.fleet_id
+                    
+                    alert = create_alert(
+                        user_id=user_id,
+                        fleet_id=fleet_id,
+                        vehicle_id=vehicle.id,
+                        alert_type='maintenance_due',
+                        severity='info',
+                        title=f'📋 Registre a primeira manutenção - {vehicle.name}',
+                        message=f'O veículo {vehicle.name} não possui registros de manutenção. '
+                               f'Registre a primeira manutenção para receber alertas preventivos personalizados.',
+                        metadata={
+                            'vehicle_age_months': (today - vehicle.created_at.date()).days // 30,
+                            'has_maintenance_records': False
+                        }
+                    )
+                    
+                    if alert:
+                        alerts_created += 1
+        
+        print(f"[ALERT] ✅ Verificação de manutenção concluída. {alerts_created} alertas criados.")
+        return alerts_created
+        
+    except Exception as e:
+        print(f"[ALERT] ❌ Erro ao verificar manutenção: {str(e)}")
+        return 0
+
+def send_fuel_anomaly_email(vehicle, deviation, recent_avg, historical_avg):
+    """Enviar email de alerta de anomalia de combustível usando sistema PF"""
+    try:
+        # Determinar destinatário
+        if vehicle.fleet_id:
+            # Para frotas, enviar para administradores
+            admins = FleetMember.query.filter(
+                FleetMember.fleet_id == vehicle.fleet_id,
+                FleetMember.role.in_(['owner', 'admin']),
+                FleetMember.is_active == True
+            ).all()
+            
+            for admin in admins:
+                if admin.user.email:
+                    send_email(
+                        to=admin.user.email,
+                        subject=f"🚨 Alerta Crítico - Consumo Elevado: {vehicle.name}",
+                        template="emails/fuel_alert.html",
+                        vehicle_name=vehicle.name,
+                        deviation=deviation,
+                        recent_avg=recent_avg,
+                        historical_avg=historical_avg,
+                        user_name=admin.user.name or admin.user.username,
+                        is_fleet=True,
+                        fleet_name=vehicle.fleet.name if vehicle.fleet else '',
+                        current_year=datetime.utcnow().year
+                    )
+        else:
+            # Para usuários individuais
+            if vehicle.user and vehicle.user.email:
+                send_email(
+                    to=vehicle.user.email,
+                    subject=f"🚨 Alerta - Consumo Elevado: {vehicle.name}",
+                    template="emails/fuel_alert.html",
+                    vehicle_name=vehicle.name,
+                    deviation=deviation,
+                    recent_avg=recent_avg,
+                    historical_avg=historical_avg,
+                    user_name=vehicle.user.name or vehicle.user.username,
+                    is_fleet=False,
+                    current_year=datetime.utcnow().year
+                )
+        
+    except Exception as e:
+        print(f"[ALERT] ❌ Erro ao enviar email de anomalia: {str(e)}")
+
+def send_maintenance_alert_email(vehicle, days_overdue, last_maintenance):
+    """Enviar email de alerta de manutenção vencida usando sistema PF"""
+    try:
+        # Determinar destinatário
+        if vehicle.fleet_id:
+            # Para frotas, enviar para administradores
+            admins = FleetMember.query.filter(
+                FleetMember.fleet_id == vehicle.fleet_id,
+                FleetMember.role.in_(['owner', 'admin']),
+                FleetMember.is_active == True
+            ).all()
+            
+            for admin in admins:
+                if admin.user.email:
+                    send_email(
+                        to=admin.user.email,
+                        subject=f"🔧 Manutenção Vencida: {vehicle.name}",
+                        template="emails/maintenance_alert.html",
+                        vehicle_name=vehicle.name,
+                        days_overdue=abs(days_overdue),
+                        last_maintenance_type=last_maintenance.service_type,
+                        last_maintenance_date=last_maintenance.date.strftime('%d/%m/%Y'),
+                        user_name=admin.user.name or admin.user.username,
+                        is_fleet=True,
+                        fleet_name=vehicle.fleet.name if vehicle.fleet else '',
+                        current_year=datetime.utcnow().year
+                    )
+        else:
+            # Para usuários individuais
+            if vehicle.user and vehicle.user.email:
+                send_email(
+                    to=vehicle.user.email,
+                    subject=f"🔧 Manutenção Vencida: {vehicle.name}",
+                    template="emails/maintenance_alert.html",
+                    vehicle_name=vehicle.name,
+                    days_overdue=abs(days_overdue),
+                    last_maintenance_type=last_maintenance.service_type,
+                    last_maintenance_date=last_maintenance.date.strftime('%d/%m/%Y'),
+                    user_name=vehicle.user.name or vehicle.user.username,
+                    is_fleet=False,
+                    current_year=datetime.utcnow().year
+                )
+        
+    except Exception as e:
+        print(f"[ALERT] ❌ Erro ao enviar email de manutenção: {str(e)}")
+
+def run_daily_alert_checks():
+    """Executar verificações diárias de alertas"""
+    print("[ALERT] 🤖 Iniciando verificações diárias de alertas...")
+    
+    fuel_alerts = check_fuel_anomalies()
+    maintenance_alerts = check_maintenance_alerts()
+    
+    total_alerts = fuel_alerts + maintenance_alerts
+    print(f"[ALERT] ✅ Verificações concluídas. Total: {total_alerts} alertas criados")
+    
+    return total_alerts
+
 # === ROTAS ===
 
 @app.route('/')
@@ -912,6 +1374,12 @@ def login():
             session.permanent = True
             login_user(user, remember=True)
             print(f"[LOGIN] Usuário logado: {current_user.is_authenticated}")
+            
+            # Verificar se há convite pendente
+            invite_token = request.args.get('invite_token')
+            if invite_token:
+                return redirect(url_for('accept_fleet_invite', token=invite_token))
+            
             next_page = request.args.get('next')
             return redirect(next_page) if next_page else redirect(url_for('dashboard'))
         else:
@@ -2018,12 +2486,201 @@ def fleet_members():
                          members=members,
                          current_membership=fleet_membership)
 
+@app.route('/fleet/send_invite', methods=['POST'])
+@login_required
+def send_fleet_invite():
+    """Enviar convite para novo membro da frota"""
+    try:
+        # Verificar se usuário pode gerenciar membros
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id, 
+            is_active=True
+        ).first()
+        
+        if not fleet_membership or not fleet_membership.can_manage_users:
+            return jsonify({'success': False, 'message': 'Você não tem permissão para convidar membros.'}), 403
+        
+        # Dados do convite
+        email = request.form.get('email', '').strip().lower()
+        name = request.form.get('name', '').strip()
+        role = request.form.get('role', 'user')
+        message = request.form.get('message', '').strip()
+        
+        if not email:
+            return jsonify({'success': False, 'message': 'Email é obrigatório.'}), 400
+        
+        # Verificar se email já está na frota
+        existing_member = FleetMember.query.join(User).filter(
+            FleetMember.fleet_id == fleet_membership.fleet_id,
+            User.email == email,
+            FleetMember.is_active == True
+        ).first()
+        
+        if existing_member:
+            return jsonify({'success': False, 'message': 'Este email já pertence à frota.'}), 400
+        
+        # Verificar se já existe convite pendente
+        existing_invite = FleetInvite.query.filter_by(
+            fleet_id=fleet_membership.fleet_id,
+            email=email,
+            status='pending'
+        ).first()
+        
+        if existing_invite and not existing_invite.is_expired:
+            return jsonify({'success': False, 'message': 'Já existe um convite pendente para este email.'}), 400
+        
+        # Cancelar convites antigos se existirem
+        if existing_invite:
+            existing_invite.status = 'cancelled'
+        
+        # Criar novo convite
+        from datetime import datetime, timedelta
+        invite = FleetInvite(
+            fleet_id=fleet_membership.fleet_id,
+            inviter_id=current_user.id,
+            email=email,
+            name=name,
+            role=role,
+            message=message,
+            expires_at=datetime.utcnow() + timedelta(days=7)
+        )
+        invite.generate_token()
+        
+        db.session.add(invite)
+        db.session.commit()
+        
+        # Enviar email usando a mesma infraestrutura do sistema PF
+        accept_url = invite.get_accept_url(request.host_url.rstrip('/'))
+        
+        # Mapeamento de roles
+        role_mapping = {
+            'owner': 'Proprietário',
+            'admin': 'Administrador', 
+            'manager': 'Gerente',
+            'user': 'Usuário'
+        }
+        
+        success = send_email(
+            to=email,
+            subject=f"🚛 Convite para frota: {fleet_membership.fleet.name} - Rodo Stats",
+            template="emails/fleet_invite.html",
+            invitee_email=email,
+            invitee_name=name or 'Colega',
+            fleet_name=fleet_membership.fleet.name,
+            inviter_name=current_user.name or current_user.username,
+            role=role,
+            role_display=role_mapping.get(role, 'Usuário'),
+            accept_url=accept_url,
+            message=message,
+            invite_date=datetime.utcnow().strftime('%d/%m/%Y às %H:%M'),
+            expiry_date=(datetime.utcnow() + timedelta(days=7)).strftime('%d/%m/%Y'),
+            current_year=datetime.utcnow().year
+        )
+        
+        if success:
+            return jsonify({
+                'success': True, 
+                'message': f'Convite enviado com sucesso para {email}!'
+            })
+        else:
+            # Marcar convite como erro no envio
+            invite.status = 'failed'
+            db.session.commit()
+            return jsonify({
+                'success': False, 
+                'message': 'Erro ao enviar email. Verifique as configurações.'
+            }), 500
+            
+    except Exception as e:
+        db.session.rollback()
+        print(f"[FLEET_INVITE] Erro: {str(e)}")
+        return jsonify({'success': False, 'message': 'Erro interno do servidor.'}), 500
+
+@app.route('/fleet/accept_invite/<token>')
+def accept_fleet_invite(token):
+    """Aceitar convite de frota"""
+    invite = FleetInvite.query.filter_by(token=token, status='pending').first()
+    
+    if not invite:
+        flash('Convite inválido ou já utilizado.', 'error')
+        return redirect(url_for('login'))
+    
+    if invite.is_expired:
+        flash('Este convite expirou. Solicite um novo convite.', 'error')
+        return redirect(url_for('login'))
+    
+    # Se usuário não está logado, redirecionar para login com parâmetro
+    if not current_user.is_authenticated:
+        return redirect(url_for('login', invite_token=token))
+    
+    # Se usuário está logado, verificar se o email confere
+    if current_user.email.lower() != invite.email.lower():
+        flash('Este convite foi enviado para outro email. Faça login com a conta correta.', 'error')
+        return redirect(url_for('logout'))
+    
+    # Verificar se usuário já pertence à frota
+    existing_member = FleetMember.query.filter_by(
+        user_id=current_user.id,
+        fleet_id=invite.fleet_id,
+        is_active=True
+    ).first()
+    
+    if existing_member:
+        flash('Você já faz parte desta frota.', 'info')
+        invite.status = 'accepted'
+        invite.accepted_at = datetime.utcnow()
+        db.session.commit()
+        return redirect(url_for('fleet_dashboard'))
+    
+    try:
+        # Aceitar convite - criar membership
+        membership = FleetMember(
+            user_id=current_user.id,
+            fleet_id=invite.fleet_id,
+            role=invite.role,
+            invited_by=invite.inviter_id
+        )
+        
+        db.session.add(membership)
+        
+        # Marcar convite como aceito
+        invite.status = 'accepted'
+        invite.accepted_at = datetime.utcnow()
+        
+        db.session.commit()
+        
+        flash(f'Bem-vindo(a) à frota {invite.fleet.name}!', 'success')
+        return redirect(url_for('fleet_dashboard'))
+        
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ACCEPT_INVITE] Erro: {str(e)}")
+        flash('Erro ao aceitar convite. Tente novamente.', 'error')
+        return redirect(url_for('login'))
+
 # === ROTAS ESPECIAIS ===
 
 @app.route('/fleet-demo')
 def fleet_demo():
     """Demo para frotas empresariais"""
     return render_template('fleet_demo.html')
+
+@app.route('/api/run_alerts')
+@login_required
+def api_run_alerts():
+    """Executar verificações de alertas manualmente"""
+    try:
+        total_alerts = run_daily_alert_checks()
+        return jsonify({
+            'success': True,
+            'alerts_created': total_alerts,
+            'message': f'{total_alerts} alertas verificados/criados com sucesso!'
+        })
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao executar alertas: {str(e)}'
+        }), 500
 
 @app.route('/capture-lead', methods=['POST'])
 def capture_lead():

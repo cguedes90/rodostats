@@ -20,12 +20,12 @@ class EmailService:
     
     def init_app(self, app):
         """Initialize email service with Flask app"""
-        self.smtp_server = app.config.get('SMTP_SERVER', 'smtp.gmail.com')
+        self.smtp_server = app.config.get('SMTP_SERVER', 'smtp.zoho.com')
         self.smtp_port = app.config.get('SMTP_PORT', 587)
-        self.smtp_username = app.config.get('SMTP_USERNAME')
+        self.smtp_username = app.config.get('SMTP_USERNAME', 'contato@inovamentelabs.com.br')
         self.smtp_password = app.config.get('SMTP_PASSWORD')
-        self.sender_email = app.config.get('SENDER_EMAIL', self.smtp_username)
-        self.sender_name = app.config.get('SENDER_NAME', 'Rodo Stats')
+        self.sender_email = app.config.get('SENDER_EMAIL', 'contato@inovamentelabs.com.br')
+        self.sender_name = app.config.get('SENDER_NAME', 'Rodo Stats - InovaMente Labs')
     
     def _send_email(self, to_email, subject, html_content, text_content=None):
         """Send email using SMTP"""
@@ -145,6 +145,37 @@ class EmailService:
         """
         
         return self._send_email(user_email, subject, html_content)
+    
+    def send_fleet_invite_email(self, invitee_email, invitee_name, fleet_name, inviter_name, role, accept_url, message=None):
+        """Send fleet invitation email"""
+        from datetime import datetime, timedelta
+        
+        # Role display mapping
+        role_mapping = {
+            'owner': 'Proprietário',
+            'admin': 'Administrador', 
+            'manager': 'Gerente',
+            'user': 'Usuário'
+        }
+        
+        context = {
+            'invitee_email': invitee_email,
+            'invitee_name': invitee_name or 'Colega',
+            'fleet_name': fleet_name,
+            'inviter_name': inviter_name,
+            'role': role,
+            'role_display': role_mapping.get(role, 'Usuário'),
+            'accept_url': accept_url,
+            'message': message,
+            'invite_date': datetime.now().strftime('%d/%m/%Y às %H:%M'),
+            'expiry_date': (datetime.now() + timedelta(days=7)).strftime('%d/%m/%Y'),
+            'current_year': datetime.now().year
+        }
+        
+        html_content = render_template('emails/fleet_invite.html', **context)
+        subject = f"🚛 Convite para frota: {fleet_name} - Rodo Stats"
+        
+        return self._send_email(invitee_email, subject, html_content)
 
 # Example usage functions
 def setup_email_service(app):
@@ -156,11 +187,11 @@ def setup_email_service(app):
 def configure_email_settings(app):
     """Configure email settings for the app"""
     app.config.update({
-        'SMTP_SERVER': 'smtp.gmail.com',
+        'SMTP_SERVER': 'smtp.zoho.com',
         'SMTP_PORT': 587,
-        'SMTP_USERNAME': os.getenv('SMTP_USERNAME'),  # Your Gmail
-        'SMTP_PASSWORD': os.getenv('SMTP_PASSWORD'),  # App password
-        'SENDER_EMAIL': os.getenv('SENDER_EMAIL'),
-        'SENDER_NAME': 'Rodo Stats',
+        'SMTP_USERNAME': os.getenv('SMTP_USERNAME', 'contato@inovamentelabs.com.br'),
+        'SMTP_PASSWORD': os.getenv('SMTP_PASSWORD'),  # Zoho app password
+        'SENDER_EMAIL': os.getenv('SENDER_EMAIL', 'contato@inovamentelabs.com.br'),
+        'SENDER_NAME': 'Rodo Stats - InovaMente Labs',
         'APP_URL': os.getenv('APP_URL', 'https://rodostats.vercel.app')
     })

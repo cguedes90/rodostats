@@ -1,38 +1,42 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <defs>
-    <linearGradient id="pumpGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4A90E2;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#357ABD;stop-opacity:1" />
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#F5A623;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#F7931E;stop-opacity:1" />
+    <linearGradient id="truckGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f8f9fa;stop-opacity:1" />
     </linearGradient>
   </defs>
   
-  <!-- Base do posto de combustível -->
-  <rect x="18" y="35" width="8" height="25" fill="url(#pumpGradient)" rx="2"/>
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#bgGradient)" stroke="#fff" stroke-width="4"/>
   
-  <!-- Display do posto -->
-  <rect x="16" y="28" width="12" height="10" fill="#2C3E50" rx="1"/>
-  <rect x="17" y="29" width="10" height="8" fill="#1ABC9C" rx="0.5"/>
+  <!-- Truck Body (main cargo area) -->
+  <rect x="10" y="28" width="24" height="12" fill="url(#truckGradient)" rx="2" stroke="#333" stroke-width="1"/>
   
-  <!-- Mangueira -->
-  <path d="M26 40 Q32 38 38 42 Q42 44 45 48" stroke="#333" stroke-width="2" fill="none"/>
+  <!-- Truck Cabin -->
+  <rect x="34" y="24" width="12" height="16" fill="url(#truckGradient)" rx="2" stroke="#333" stroke-width="1"/>
   
-  <!-- Bico da mangueira -->
-  <circle cx="45" cy="48" r="3" fill="#666"/>
+  <!-- Windshield -->
+  <rect x="36" y="26" width="8" height="6" fill="#87ceeb" rx="1"/>
   
-  <!-- Símbolo de velocidade (raios) -->
-  <path d="M48 15 L52 25 L46 22 L50 32 L42 28 L46 38 L38 34 L42 44" 
-        fill="url(#speedGradient)" stroke="#F5A623" stroke-width="0.5"/>
+  <!-- Wheels -->
+  <circle cx="18" cy="44" r="4" fill="#333"/>
+  <circle cx="18" cy="44" r="2" fill="#666"/>
+  <circle cx="42" cy="44" r="4" fill="#333"/>
+  <circle cx="42" cy="44" r="2" fill="#666"/>
   
-  <!-- Símbolo $ -->
-  <text x="8" y="20" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#27AE60">$</text>
+  <!-- Fuel Drop Symbol -->
+  <ellipse cx="22" cy="18" rx="3" ry="4" fill="#28a745"/>
+  <circle cx="22" cy="15" r="1.5" fill="#28a745"/>
   
-  <!-- Base/chão -->
-  <rect x="12" y="58" width="20" height="4" fill="#34495E" rx="2"/>
+  <!-- Stats Bars (Analytics) -->
+  <rect x="48" y="16" width="2" height="4" fill="#ffd700"/>
+  <rect x="51" y="14" width="2" height="6" fill="#ffd700"/>
+  <rect x="54" y="12" width="2" height="8" fill="#ffd700"/>
   
-  <!-- Linhas de movimento/velocidade -->
-  <path d="M55 12 L60 12 M54 16 L58 16 M56 20 L60 20" stroke="#F39C12" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- Speed lines -->
+  <path d="M52 28 L58 28 M51 31 L56 31 M53 34 L58 34" stroke="#28a745" stroke-width="2" stroke-linecap="round"/>
 </svg>
