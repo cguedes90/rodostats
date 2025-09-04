@@ -479,6 +479,147 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
 
+# === SISTEMA DE FROTAS EMPRESARIAIS ===
+
+class Fleet(db.Model):
+    """Modelo para empresas/frotas"""
+    __tablename__ = 'fleets'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    company_name = db.Column(db.String(150), nullable=False)
+    cnpj = db.Column(db.String(18), unique=True, nullable=True)
+    email = db.Column(db.String(120), nullable=False)
+    phone = db.Column(db.String(20), nullable=True)
+    address = db.Column(db.Text, nullable=True)
+    
+    # Configurações da frota
+    subscription_plan = db.Column(db.String(20), default='trial')  # trial, small, enterprise, custom
+    max_vehicles = db.Column(db.Integer, default=10)
+    max_users = db.Column(db.Integer, default=3)
+    features_enabled = db.Column(db.JSON, default=lambda: {
+        'dashboard_executive': True,
+        'automatic_reports': False,
+        'api_access': False,
+        'custom_alerts': True
+    })
+    
+    # Metadados
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    trial_ends_at = db.Column(db.DateTime, nullable=True)
+    
+    # Relacionamentos
+    members = db.relationship('FleetMember', backref='fleet', lazy=True, cascade='all, delete-orphan')
+    vehicles = db.relationship('Vehicle', backref='fleet', lazy=True)
+    
+    def __repr__(self):
+        return f'<Fleet {self.company_name}>'
+    
+    @property
+    def is_trial_active(self):
+        """Verifica se o trial ainda está ativo"""
+        if not self.trial_ends_at:
+            return False
+        return datetime.utcnow() < self.trial_ends_at
+    
+    @property
+    def vehicles_count(self):
+        """Conta veículos ativos da frota"""
+        return Vehicle.query.filter_by(fleet_id=self.id, is_active=True).count()
+    
+    @property
+    def members_count(self):
+        """Conta membros ativos da frota"""
+        return FleetMember.query.filter_by(fleet_id=self.id, is_active=True).count()
+    
+    def can_add_vehicle(self):
+        """Verifica se pode adicionar mais veículos"""
+        return self.vehicles_count < self.max_vehicles
+    
+    def can_add_member(self):
+        """Verifica se pode adicionar mais membros"""
+        return self.members_count < self.max_users
+
+class FleetMember(db.Model):
+    """Membros de uma frota (usuários da empresa)"""
+    __tablename__ = 'fleet_members'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fleet_id = db.Column(db.Integer, db.ForeignKey('fleets.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    
+    # Hierarquia de permissões
+    role = db.Column(db.String(20), nullable=False, default='user')
+    # Roles: owner, admin, manager, user, driver
+    
+    # Metadados
+    joined_at = db.Column(db.DateTime, default=datetime.utcnow)
+    invited_at = db.Column(db.DateTime, nullable=True)
+    invited_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Relacionamentos
+    user = db.relationship('User', foreign_keys=[user_id], backref='fleet_memberships')
+    inviter = db.relationship('User', foreign_keys=[invited_by])
+    
+    # Índice único para evitar duplicatas
+    __table_args__ = (db.UniqueConstraint('fleet_id', 'user_id', name='unique_fleet_member'),)
+    
+    def __repr__(self):
+        return f'<FleetMember {self.user.username} in {self.fleet.company_name}>'
+    
+    @property
+    def is_admin(self):
+        return self.role in ['owner', 'admin']
+    
+    @property
+    def is_manager(self):
+        return self.role in ['owner', 'admin', 'manager']
+    
+    @property
+    def can_manage_users(self):
+        return self.role in ['owner', 'admin']
+    
+    @property
+    def can_view_reports(self):
+        return self.role in ['owner', 'admin', 'manager']
+
+class Driver(db.Model):
+    """Motoristas da frota"""
+    __tablename__ = 'drivers'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    fleet_id = db.Column(db.Integer, db.ForeignKey('fleets.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  # Pode ou não ter conta
+    
+    # Dados pessoais
+    name = db.Column(db.String(100), nullable=False)
+    cpf = db.Column(db.String(14), nullable=True)
+    cnh = db.Column(db.String(20), nullable=True)
+    cnh_category = db.Column(db.String(10), nullable=True)
+    phone = db.Column(db.String(20), nullable=True)
+    email = db.Column(db.String(120), nullable=True)
+    
+    # Metadados
+    hired_at = db.Column(db.Date, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    # Relacionamentos
+    fleet_rel = db.relationship('Fleet', backref='drivers')
+    user = db.relationship('User', backref='driver_profile')
+    
+    def __repr__(self):
+        return f'<Driver {self.name}>'
+    
+    @property
+    def efficiency_score(self):
+        """Calcula score de eficiência do motorista (mock por enquanto)"""
+        # TODO: Implementar cálculo real baseado em consumo
+        return 85  # Placeholder
+
 class Vehicle(db.Model):
     __tablename__ = 'vehicles'
     
@@ -495,8 +636,20 @@ class Vehicle(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
+    # === CAMPOS PARA FROTAS ===
+    fleet_id = db.Column(db.Integer, db.ForeignKey('fleets.id'), nullable=True)
+    driver_id = db.Column(db.Integer, db.ForeignKey('drivers.id'), nullable=True)
+    vehicle_type = db.Column(db.String(20), default='car')  # car, truck, van, motorcycle, bus
+    department = db.Column(db.String(100), nullable=True)  # Centro de custo
+    
+    # Dados operacionais para frotas
+    current_odometer = db.Column(db.Integer, nullable=True)  # KM atual
+    purchase_date = db.Column(db.Date, nullable=True)
+    purchase_price = db.Column(db.Float, nullable=True)
+    
     # Relacionamentos
     fuel_records = db.relationship('FuelRecord', backref='vehicle', lazy=True, cascade='all, delete-orphan')
+    assigned_driver = db.relationship('Driver', backref='assigned_vehicles')
     
     def __repr__(self):
         return f'<Vehicle {self.name} - {self.license_plate}>'
@@ -1691,6 +1844,179 @@ def delete_maintenance(maintenance_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'Erro ao excluir manutenção: {str(e)}'}), 500
+
+# === ROTAS DE FROTAS EMPRESARIAIS ===
+
+@app.route('/fleet/register', methods=['GET', 'POST'])
+def fleet_register():
+    """Registro de nova frota/empresa"""
+    if request.method == 'POST':
+        try:
+            company_name = request.form.get('company_name')
+            contact_name = request.form.get('contact_name')
+            email = request.form.get('email')
+            phone = request.form.get('phone')
+            cnpj = request.form.get('cnpj')
+            password = request.form.get('password')
+            
+            # Validações básicas
+            if not all([company_name, contact_name, email, password]):
+                flash('Todos os campos obrigatórios devem ser preenchidos!', 'error')
+                return redirect(url_for('fleet_register'))
+            
+            # Verificar se email já existe
+            existing_user = User.query.filter_by(email=email).first()
+            if existing_user:
+                flash('Email já cadastrado no sistema!', 'error')
+                return redirect(url_for('fleet_register'))
+            
+            # Verificar CNPJ se fornecido
+            if cnpj:
+                existing_fleet = Fleet.query.filter_by(cnpj=cnpj).first()
+                if existing_fleet:
+                    flash('CNPJ já cadastrado no sistema!', 'error')
+                    return redirect(url_for('fleet_register'))
+            
+            # Criar usuário administrador da frota
+            admin_user = User(
+                username=email.split('@')[0],  # Usar parte do email como username
+                email=email,
+                created_at=datetime.utcnow()
+            )
+            admin_user.set_password(password)
+            
+            # Criar frota
+            fleet = Fleet(
+                name=company_name,
+                company_name=company_name,
+                cnpj=cnpj,
+                email=email,
+                phone=phone,
+                subscription_plan='trial',
+                trial_ends_at=datetime.utcnow() + timedelta(days=30),  # 30 dias de trial
+                created_at=datetime.utcnow()
+            )
+            
+            # Salvar no banco
+            db.session.add(admin_user)
+            db.session.add(fleet)
+            db.session.flush()  # Para obter IDs
+            
+            # Criar membro owner da frota
+            fleet_member = FleetMember(
+                fleet_id=fleet.id,
+                user_id=admin_user.id,
+                role='owner',
+                joined_at=datetime.utcnow()
+            )
+            
+            db.session.add(fleet_member)
+            db.session.commit()
+            
+            # Login automático
+            login_user(admin_user)
+            
+            flash(f'Frota {company_name} criada com sucesso! Trial de 30 dias ativado.', 'success')
+            return redirect(url_for('fleet_dashboard'))
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Erro ao criar frota: {str(e)}', 'error')
+            return redirect(url_for('fleet_register'))
+    
+    return render_template('fleet_register.html')
+
+@app.route('/fleet/dashboard')
+@login_required
+def fleet_dashboard():
+    """Dashboard executivo para frotas"""
+    # Verificar se usuário pertence a uma frota
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id, 
+        is_active=True
+    ).first()
+    
+    if not fleet_membership:
+        flash('Você não está associado a nenhuma frota.', 'error')
+        return redirect(url_for('dashboard'))
+    
+    fleet = fleet_membership.fleet
+    
+    # KPIs da frota
+    fleet_vehicles = Vehicle.query.filter_by(fleet_id=fleet.id, is_active=True).all()
+    
+    # Dados dos últimos 30 dias
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    
+    # Total de registros de combustível
+    fleet_fuel_records = db.session.query(FuelRecord).join(Vehicle).filter(
+        Vehicle.fleet_id == fleet.id,
+        FuelRecord.date >= thirty_days_ago.date()
+    ).all()
+    
+    # Calcular KPIs
+    total_spent = sum(record.total_cost for record in fleet_fuel_records)
+    total_liters = sum(record.liters for record in fleet_fuel_records)
+    total_vehicles = len(fleet_vehicles)
+    
+    # Eficiência média da frota
+    consumptions = []
+    for vehicle in fleet_vehicles:
+        efficiency = calculate_fuel_efficiency(vehicle.id)
+        if efficiency['has_data']:
+            consumptions.append(efficiency['average_consumption'])
+    
+    avg_fleet_consumption = sum(consumptions) / len(consumptions) if consumptions else 0
+    
+    # Top veículos por eficiência
+    vehicle_efficiency = []
+    for vehicle in fleet_vehicles:
+        efficiency = calculate_fuel_efficiency(vehicle.id)
+        vehicle_efficiency.append({
+            'vehicle': vehicle,
+            'efficiency': efficiency['average_consumption'] if efficiency['has_data'] else 0,
+            'total_records': efficiency.get('total_records', 0)
+        })
+    
+    vehicle_efficiency.sort(key=lambda x: x['efficiency'], reverse=True)
+    
+    # Estatísticas
+    fleet_stats = {
+        'total_vehicles': total_vehicles,
+        'total_spent_30d': total_spent,
+        'total_liters_30d': total_liters,
+        'avg_consumption': avg_fleet_consumption,
+        'total_records_30d': len(fleet_fuel_records),
+        'cost_per_vehicle': total_spent / total_vehicles if total_vehicles > 0 else 0
+    }
+    
+    return render_template('fleet_dashboard.html', 
+                         fleet=fleet,
+                         fleet_membership=fleet_membership,
+                         fleet_stats=fleet_stats,
+                         vehicle_efficiency=vehicle_efficiency[:5])  # Top 5
+
+@app.route('/fleet/members')
+@login_required 
+def fleet_members():
+    """Gerenciar membros da frota"""
+    # Verificar se usuário pode gerenciar membros
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id, 
+        is_active=True
+    ).first()
+    
+    if not fleet_membership or not fleet_membership.can_manage_users:
+        flash('Você não tem permissão para gerenciar membros.', 'error')
+        return redirect(url_for('fleet_dashboard'))
+    
+    fleet = fleet_membership.fleet
+    members = FleetMember.query.filter_by(fleet_id=fleet.id, is_active=True).all()
+    
+    return render_template('fleet_members.html', 
+                         fleet=fleet,
+                         members=members,
+                         current_membership=fleet_membership)
 
 # === ROTAS ESPECIAIS ===
 
