@@ -1102,132 +1102,323 @@ def check_fuel_anomalies():
         return 0
 
 def check_maintenance_alerts():
-    """Verificar alertas de manutenção vencida ou próxima"""
+    """Verificar alertas de manutenção preventiva inteligente"""
     try:
-        print("[ALERT] 🔧 Verificando alertas de manutenção...")
-        
+        print("[ALERT] 🔧 Verificando alertas de manutenção preventiva...")
+
         alerts_created = 0
         today = datetime.now().date()
-        
+
         # Buscar todos os veículos ativos
         vehicles = Vehicle.query.filter_by(is_active=True).all()
-        
+
         for vehicle in vehicles:
-            # Buscar última manutenção
-            last_maintenance = MaintenanceRecord.query.filter_by(
-                vehicle_id=vehicle.id
-            ).order_by(MaintenanceRecord.date.desc()).first()
-            
-            if last_maintenance:
-                days_since_maintenance = (today - last_maintenance.date).days
-                
-                # Alertas baseados no tipo de manutenção
-                maintenance_intervals = {
-                    'oil_change': 90,      # 3 meses
-                    'tire_rotation': 180,  # 6 meses  
-                    'brake_service': 365,  # 1 ano
-                    'general_service': 180 # 6 meses
-                }
-                
-                interval = maintenance_intervals.get(last_maintenance.service_type, 180)
-                days_until_next = interval - days_since_maintenance
-                
-                # Verificar alertas existentes
-                existing_alert = Alert.query.filter(
-                    Alert.vehicle_id == vehicle.id,
-                    Alert.alert_type.in_(['maintenance_due', 'maintenance_overdue']),
-                    Alert.is_active == True,
-                    Alert.created_at >= datetime.utcnow() - timedelta(days=7)
-                ).first()
-                
-                alert_needed = False
-                alert_type = 'maintenance_due'
-                severity = 'info'
-                title = ''
-                message = ''
-                
-                if days_until_next <= -7:  # Vencida há mais de 7 dias
-                    alert_type = 'maintenance_overdue'
-                    severity = 'critical'
-                    title = f'🚨 Manutenção vencida - {vehicle.name}'
-                    message = f'A manutenção do veículo {vehicle.name} está vencida há {abs(days_until_next)} dias. ' \
-                             f'Última manutenção: {last_maintenance.service_type} em {last_maintenance.date.strftime("%d/%m/%Y")}. ' \
-                             f'Agende uma revisão imediatamente para evitar problemas maiores.'
-                    alert_needed = True
-                elif days_until_next <= 7 and days_until_next > -7:  # Próxima em até 7 dias
-                    alert_type = 'maintenance_due'
-                    severity = 'warning'
-                    title = f'⚠️ Manutenção próxima - {vehicle.name}'
-                    message = f'A manutenção do veículo {vehicle.name} está próxima (em {days_until_next} dias). ' \
-                             f'Última manutenção: {last_maintenance.service_type} em {last_maintenance.date.strftime("%d/%m/%Y")}. ' \
-                             f'Recomendamos agendar uma revisão preventiva.'
-                    alert_needed = True
-                
-                if alert_needed and not existing_alert:
-                    user_id = vehicle.user_id if not vehicle.fleet_id else None
-                    fleet_id = vehicle.fleet_id
-                    
-                    alert = create_alert(
-                        user_id=user_id,
-                        fleet_id=fleet_id,
-                        vehicle_id=vehicle.id,
-                        alert_type=alert_type,
-                        severity=severity,
-                        title=title,
-                        message=message,
-                        alert_data={
-                            'last_maintenance_date': last_maintenance.date.isoformat(),
-                            'last_maintenance_type': last_maintenance.service_type,
-                            'days_since_maintenance': days_since_maintenance,
-                            'days_until_next': days_until_next,
-                            'recommended_interval': interval
-                        }
-                    )
-                    
-                    if alert:
-                        alerts_created += 1
-                        
-                        # Enviar email se crítico
-                        if severity == 'critical':
-                            send_maintenance_alert_email(vehicle, days_until_next, last_maintenance)
-            
-            else:
-                # Veículo sem manutenção registrada - alerta informativo
-                existing_alert = Alert.query.filter(
-                    Alert.vehicle_id == vehicle.id,
-                    Alert.alert_type == 'maintenance_due',
-                    Alert.is_active == True,
-                    Alert.created_at >= datetime.utcnow() - timedelta(days=30)
-                ).first()
-                
-                if not existing_alert:
-                    user_id = vehicle.user_id if not vehicle.fleet_id else None
-                    fleet_id = vehicle.fleet_id
-                    
-                    alert = create_alert(
-                        user_id=user_id,
-                        fleet_id=fleet_id,
-                        vehicle_id=vehicle.id,
-                        alert_type='maintenance_due',
-                        severity='info',
-                        title=f'📋 Registre a primeira manutenção - {vehicle.name}',
-                        message=f'O veículo {vehicle.name} não possui registros de manutenção. '
-                               f'Registre a primeira manutenção para receber alertas preventivos personalizados.',
-                        alert_data={
-                            'vehicle_age_months': (today - vehicle.created_at.date()).days // 30,
-                            'has_maintenance_records': False
-                        }
-                    )
-                    
-                    if alert:
-                        alerts_created += 1
-        
-        print(f"[ALERT] ✅ Verificação de manutenção concluída. {alerts_created} alertas criados.")
+            # 1. ALERTAS POR TEMPO (última manutenção)
+            alerts_created += check_time_based_maintenance(vehicle, today)
+
+            # 2. ALERTAS POR QUILOMETRAGEM
+            alerts_created += check_mileage_based_maintenance(vehicle, today)
+
+            # 3. ALERTAS POR CONSUMO ANÔMALO
+            alerts_created += check_consumption_anomaly_alerts(vehicle, today)
+
+            # 4. ALERTAS POR IDADE DO VEÍCULO
+            alerts_created += check_vehicle_age_alerts(vehicle, today)
+
+        print(f"[ALERT] ✅ Manutenção preventiva: {alerts_created} alertas criados")
         return alerts_created
-        
+
     except Exception as e:
-        print(f"[ALERT] ❌ Erro ao verificar manutenção: {str(e)}")
+        print(f"[ALERT] ❌ Erro na verificação de manutenção: {str(e)}")
         return 0
+
+def check_time_based_maintenance(vehicle, today):
+    """Alertas baseados em tempo desde última manutenção"""
+    alerts_created = 0
+
+    # Buscar última manutenção
+    last_maintenance = MaintenanceRecord.query.filter_by(
+        vehicle_id=vehicle.id
+    ).order_by(MaintenanceRecord.date.desc()).first()
+
+    if last_maintenance:
+        days_since_maintenance = (today - last_maintenance.date).days
+
+        # Intervalos melhorados por tipo de manutenção
+        maintenance_intervals = {
+            'oil_change': {
+                'interval': 90,      # 3 meses
+                'warning': 75,       # Alerta 15 dias antes
+                'critical': 100      # Crítico 10 dias após vencimento
+            },
+            'tire_rotation': {
+                'interval': 180,     # 6 meses
+                'warning': 150,      # Alerta 30 dias antes
+                'critical': 210      # Crítico 30 dias após
+            },
+            'brake_service': {
+                'interval': 365,     # 1 ano
+                'warning': 335,      # Alerta 30 dias antes
+                'critical': 395      # Crítico 30 dias após
+            },
+            'general_service': {
+                'interval': 180,     # 6 meses
+                'warning': 150,      # Alerta 30 dias antes
+                'critical': 210      # Crítico 30 dias após
+            }
+        }
+
+        config = maintenance_intervals.get(last_maintenance.service_type, {
+            'interval': 180, 'warning': 150, 'critical': 210
+        })
+
+        # Verificar se já existe alerta recente
+        existing_alert = Alert.query.filter(
+            Alert.vehicle_id == vehicle.id,
+            Alert.alert_type == 'maintenance',
+            Alert.created_at >= today - timedelta(days=7)
+        ).first()
+
+        if existing_alert:
+            return 0  # Não criar alertas duplicados
+
+        # Alerta crítico (manutenção vencida)
+        if days_since_maintenance >= config['critical']:
+            days_overdue = days_since_maintenance - config['interval']
+
+            create_alert(
+                user_id=vehicle.user_id if not vehicle.fleet_id else None,
+                fleet_id=vehicle.fleet_id,
+                vehicle_id=vehicle.id,
+                alert_type='maintenance',
+                severity='critical',
+                title=f'🚨 Manutenção VENCIDA - {vehicle.brand} {vehicle.model}',
+                message=f'Manutenção de {last_maintenance.service_type} está {days_overdue} dias em atraso. AÇÃO URGENTE necessária!',
+                metadata=json.dumps({
+                    'maintenance_type': last_maintenance.service_type,
+                    'days_overdue': days_overdue,
+                    'last_maintenance_date': last_maintenance.date.isoformat()
+                })
+            )
+            alerts_created += 1
+
+        # Alerta de aviso (manutenção próxima)
+        elif days_since_maintenance >= config['warning']:
+            days_until_due = config['interval'] - days_since_maintenance
+
+            create_alert(
+                user_id=vehicle.user_id if not vehicle.fleet_id else None,
+                fleet_id=vehicle.fleet_id,
+                vehicle_id=vehicle.id,
+                alert_type='maintenance',
+                severity='warning',
+                title=f'⚠️ Manutenção Próxima - {vehicle.brand} {vehicle.model}',
+                message=f'Manutenção de {last_maintenance.service_type} vence em {abs(days_until_due)} dias. Agende em breve!',
+                metadata=json.dumps({
+                    'maintenance_type': last_maintenance.service_type,
+                    'days_until_due': days_until_due,
+                    'last_maintenance_date': last_maintenance.date.isoformat()
+                })
+            )
+            alerts_created += 1
+    else:
+        # Veículo sem histórico de manutenção
+        create_alert(
+            user_id=vehicle.user_id if not vehicle.fleet_id else None,
+            fleet_id=vehicle.fleet_id,
+            vehicle_id=vehicle.id,
+            alert_type='maintenance',
+            severity='warning',
+            title=f'📝 Registrar Primeira Manutenção - {vehicle.brand} {vehicle.model}',
+            message=f'Nenhuma manutenção registrada para este veículo. Registre o histórico para ativar alertas automáticos.',
+            metadata=json.dumps({
+                'reason': 'no_maintenance_history'
+            })
+        )
+        alerts_created += 1
+
+    return alerts_created
+
+def check_mileage_based_maintenance(vehicle, today):
+    """Alertas baseados em quilometragem percorrida"""
+    alerts_created = 0
+
+    try:
+        # Buscar último registro de combustível para verificar quilometragem atual
+        last_fuel_record = FuelRecord.query.filter_by(
+            vehicle_id=vehicle.id
+        ).order_by(FuelRecord.date.desc()).first()
+
+        if not last_fuel_record or not last_fuel_record.odometer:
+            return 0
+
+        current_mileage = last_fuel_record.odometer
+
+        # Buscar última manutenção com quilometragem
+        last_maintenance = MaintenanceRecord.query.filter(
+            MaintenanceRecord.vehicle_id == vehicle.id,
+            MaintenanceRecord.mileage.isnot(None)
+        ).order_by(MaintenanceRecord.date.desc()).first()
+
+        if last_maintenance and last_maintenance.mileage:
+            km_since_maintenance = current_mileage - last_maintenance.mileage
+
+            # Intervalos por quilometragem
+            mileage_intervals = {
+                'oil_change': 10000,      # 10.000 km
+                'tire_rotation': 15000,   # 15.000 km
+                'brake_service': 40000,   # 40.000 km
+                'general_service': 20000  # 20.000 km
+            }
+
+            interval_km = mileage_intervals.get(last_maintenance.service_type, 15000)
+
+            # Verificar se precisa de manutenção
+            if km_since_maintenance >= interval_km:
+                km_overdue = km_since_maintenance - interval_km
+
+                # Verificar se já existe alerta recente
+                existing_alert = Alert.query.filter(
+                    Alert.vehicle_id == vehicle.id,
+                    Alert.alert_type == 'maintenance',
+                    Alert.created_at >= today - timedelta(days=7)
+                ).first()
+
+                if not existing_alert:
+                    create_alert(
+                        user_id=vehicle.user_id if not vehicle.fleet_id else None,
+                        fleet_id=vehicle.fleet_id,
+                        vehicle_id=vehicle.id,
+                        alert_type='maintenance',
+                        severity='critical' if km_overdue > 2000 else 'warning',
+                        title=f'🛣️ Manutenção por KM - {vehicle.brand} {vehicle.model}',
+                        message=f'Veículo rodou {km_since_maintenance:,.0f} km desde a última {last_maintenance.service_type}. Limite: {interval_km:,.0f} km.',
+                        metadata=json.dumps({
+                            'maintenance_type': last_maintenance.service_type,
+                            'km_since_maintenance': km_since_maintenance,
+                            'km_overdue': km_overdue,
+                            'current_mileage': current_mileage
+                        })
+                    )
+                    alerts_created += 1
+
+    except Exception as e:
+        print(f"[ALERT] Erro na verificação por quilometragem: {str(e)}")
+
+    return alerts_created
+
+def check_consumption_anomaly_alerts(vehicle, today):
+    """Alertas por consumo anômalo que pode indicar problemas mecânicos"""
+    alerts_created = 0
+
+    try:
+        # Buscar registros dos últimos 30 dias
+        recent_records = FuelRecord.query.filter(
+            FuelRecord.vehicle_id == vehicle.id,
+            FuelRecord.date >= today - timedelta(days=30),
+            FuelRecord.consumption.isnot(None),
+            FuelRecord.consumption > 0
+        ).all()
+
+        if len(recent_records) < 3:
+            return 0  # Precisa de pelo menos 3 registros
+
+        # Calcular consumo médio recente
+        recent_consumptions = [r.consumption for r in recent_records]
+        avg_recent = sum(recent_consumptions) / len(recent_consumptions)
+
+        # Buscar registros históricos (últimos 90 dias, excluindo os 30 recentes)
+        historical_records = FuelRecord.query.filter(
+            FuelRecord.vehicle_id == vehicle.id,
+            FuelRecord.date >= today - timedelta(days=90),
+            FuelRecord.date < today - timedelta(days=30),
+            FuelRecord.consumption.isnot(None),
+            FuelRecord.consumption > 0
+        ).all()
+
+        if len(historical_records) < 3:
+            return 0  # Precisa de histórico para comparar
+
+        # Calcular consumo médio histórico
+        historical_consumptions = [r.consumption for r in historical_records]
+        avg_historical = sum(historical_consumptions) / len(historical_consumptions)
+
+        # Verificar se houve piora significativa (mais de 15% de queda na eficiência)
+        consumption_change = ((avg_recent - avg_historical) / avg_historical) * 100
+
+        if consumption_change < -15:  # Consumo piorou mais de 15%
+            # Verificar se já existe alerta recente
+            existing_alert = Alert.query.filter(
+                Alert.vehicle_id == vehicle.id,
+                Alert.alert_type == 'consumption_anomaly',
+                Alert.created_at >= today - timedelta(days=14)
+            ).first()
+
+            if not existing_alert:
+                create_alert(
+                    user_id=vehicle.user_id if not vehicle.fleet_id else None,
+                    fleet_id=vehicle.fleet_id,
+                    vehicle_id=vehicle.id,
+                    alert_type='consumption_anomaly',
+                    severity='warning',
+                    title=f'📉 Consumo Anômalo - {vehicle.brand} {vehicle.model}',
+                    message=f'Consumo piorou {abs(consumption_change):.1f}% nos últimos 30 dias. Pode indicar necessidade de manutenção.',
+                    metadata=json.dumps({
+                        'consumption_change_percent': consumption_change,
+                        'avg_recent': avg_recent,
+                        'avg_historical': avg_historical,
+                        'recent_records_count': len(recent_records)
+                    })
+                )
+                alerts_created += 1
+
+    except Exception as e:
+        print(f"[ALERT] Erro na verificação de consumo anômalo: {str(e)}")
+
+    return alerts_created
+
+def check_vehicle_age_alerts(vehicle, today):
+    """Alertas baseados na idade do veículo"""
+    alerts_created = 0
+
+    try:
+        if not vehicle.year:
+            return 0
+
+        vehicle_age = today.year - vehicle.year
+
+        # Alertas por idade do veículo
+        if vehicle_age >= 10:  # Veículo com 10+ anos
+            # Verificar se já existe alerta recente
+            existing_alert = Alert.query.filter(
+                Alert.vehicle_id == vehicle.id,
+                Alert.alert_type == 'vehicle_age',
+                Alert.created_at >= today - timedelta(days=90)  # Alerta a cada 3 meses
+            ).first()
+
+            if not existing_alert:
+                severity = 'critical' if vehicle_age >= 15 else 'warning'
+
+                create_alert(
+                    user_id=vehicle.user_id if not vehicle.fleet_id else None,
+                    fleet_id=vehicle.fleet_id,
+                    vehicle_id=vehicle.id,
+                    alert_type='vehicle_age',
+                    severity=severity,
+                    title=f'🕐 Veículo Antigo - {vehicle.brand} {vehicle.model}',
+                    message=f'Veículo de {vehicle.year} ({vehicle_age} anos) requer manutenção preventiva mais frequente.',
+                    metadata=json.dumps({
+                        'vehicle_age': vehicle_age,
+                        'vehicle_year': vehicle.year,
+                        'recommendation': 'Manutenção preventiva a cada 3-4 meses'
+                    })
+                )
+                alerts_created += 1
+
+    except Exception as e:
+        print(f"[ALERT] Erro na verificação de idade do veículo: {str(e)}")
+
+    return alerts_created
 
 def send_fuel_anomaly_email(vehicle, deviation, recent_avg, historical_avg):
     """Enviar email de alerta de anomalia de combustível usando sistema PF"""
@@ -2658,12 +2849,838 @@ def accept_fleet_invite(token):
         flash('Erro ao aceitar convite. Tente novamente.', 'error')
         return redirect(url_for('login'))
 
+# === ROTAS DE RELATÓRIOS ===
+
+@app.route('/fleet/reports')
+@login_required
+def fleet_reports():
+    """Página de relatórios da frota"""
+    # Verificar se usuário pertence a uma frota
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+
+    if not fleet_membership or not fleet_membership.can_view_reports:
+        flash('Acesso negado aos relatórios.', 'error')
+        return redirect(url_for('dashboard'))
+
+    fleet = fleet_membership.fleet
+
+    return render_template('fleet_reports.html',
+                         fleet=fleet,
+                         fleet_membership=fleet_membership)
+
+@app.route('/fleet/generate_report')
+@login_required
+def generate_fleet_report():
+    """Gerar relatório da frota"""
+    try:
+        # Verificar se usuário pode gerar relatórios
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership or not fleet_membership.can_view_reports:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        # Parâmetros
+        report_type = request.args.get('type', 'pdf')  # pdf ou excel
+        period_days = int(request.args.get('period', 30))
+
+        # Importar função de geração
+        from report_generator import generate_fleet_reports
+
+        fleet = fleet_membership.fleet
+
+        # Gerar relatórios
+        pdf_data, excel_data, fleet_stats = generate_fleet_reports(fleet, period_days)
+
+        # Salvar arquivo temporário
+        import tempfile
+        import os
+
+        if report_type == 'excel':
+            # Retornar Excel
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.xlsx')
+            temp_file.write(excel_data)
+            temp_file.close()
+
+            filename = f"relatorio_frota_{fleet.company_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+
+            return send_file(
+                temp_file.name,
+                as_attachment=True,
+                download_name=filename,
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            )
+        else:
+            # Retornar PDF
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pdf')
+            temp_file.write(pdf_data)
+            temp_file.close()
+
+            filename = f"relatorio_frota_{fleet.company_name.replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M')}.pdf"
+
+            return send_file(
+                temp_file.name,
+                as_attachment=True,
+                download_name=filename,
+                mimetype='application/pdf'
+            )
+
+    except Exception as e:
+        print(f"[FLEET_REPORT] Erro: {str(e)}")
+        flash('Erro ao gerar relatório. Tente novamente.', 'error')
+        return redirect(url_for('fleet_dashboard'))
+
+@app.route('/api/fleet/report_preview')
+@login_required
+def fleet_report_preview():
+    """Preview dos dados do relatório (JSON)"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        period_days = int(request.args.get('period', 30))
+
+        # Importar função de geração
+        from report_generator import generate_fleet_reports
+
+        fleet = fleet_membership.fleet
+
+        # Gerar apenas as estatísticas (sem os arquivos)
+        _, _, fleet_stats = generate_fleet_reports(fleet, period_days)
+
+        return jsonify({
+            'success': True,
+            'fleet_name': fleet.company_name,
+            'period_days': period_days,
+            'stats': fleet_stats,
+            'generated_at': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"[FLEET_REPORT_PREVIEW] Erro: {str(e)}")
+        return jsonify({'error': 'Erro ao gerar preview'}), 500
+
+# === ROTAS DE MOTORISTAS ===
+
+@app.route('/fleet/drivers')
+@login_required
+def fleet_drivers():
+    """Página de gerenciamento de motoristas"""
+    # Verificar se usuário pertence a uma frota
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+
+    if not fleet_membership or not fleet_membership.can_manage_vehicles:
+        flash('Acesso negado ao gerenciamento de motoristas.', 'error')
+        return redirect(url_for('fleet_dashboard'))
+
+    fleet = fleet_membership.fleet
+
+    # Buscar motoristas da frota
+    drivers = Driver.query.filter_by(fleet_id=fleet.id, is_active=True).all()
+
+    # Buscar veículos disponíveis (sem motorista fixo)
+    available_vehicles = Vehicle.query.filter_by(
+        fleet_id=fleet.id,
+        is_active=True,
+        driver_id=None
+    ).all()
+
+    # Buscar veículos por motorista
+    driver_vehicles = {}
+    for driver in drivers:
+        driver_vehicles[driver.id] = Vehicle.query.filter_by(
+            driver_id=driver.id,
+            is_active=True
+        ).all()
+
+    return render_template('fleet_drivers.html',
+                         fleet=fleet,
+                         fleet_membership=fleet_membership,
+                         drivers=drivers,
+                         available_vehicles=available_vehicles,
+                         driver_vehicles=driver_vehicles)
+
+@app.route('/fleet/drivers/add', methods=['POST'])
+@login_required
+def add_fleet_driver():
+    """Adicionar novo motorista"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership or not fleet_membership.can_manage_vehicles:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        # Dados do motorista
+        name = request.form.get('name')
+        cpf = request.form.get('cpf', '').replace('.', '').replace('-', '')
+        cnh = request.form.get('cnh')
+        cnh_category = request.form.get('cnh_category')
+        phone = request.form.get('phone')
+        email = request.form.get('email')
+
+        # Validações básicas
+        if not name:
+            flash('Nome é obrigatório.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Verificar se CPF já existe na frota
+        if cpf:
+            existing = Driver.query.filter_by(
+                fleet_id=fleet_membership.fleet_id,
+                cpf=cpf,
+                is_active=True
+            ).first()
+            if existing:
+                flash('CPF já cadastrado na frota.', 'error')
+                return redirect(url_for('fleet_drivers'))
+
+        # Criar motorista
+        driver = Driver(
+            fleet_id=fleet_membership.fleet_id,
+            name=name,
+            cpf=cpf if cpf else None,
+            cnh=cnh if cnh else None,
+            cnh_category=cnh_category if cnh_category else None,
+            phone=phone if phone else None,
+            email=email if email else None
+        )
+
+        db.session.add(driver)
+        db.session.commit()
+
+        flash(f'Motorista {name} adicionado com sucesso!', 'success')
+        return redirect(url_for('fleet_drivers'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ADD_DRIVER] Erro: {str(e)}")
+        flash('Erro ao adicionar motorista. Tente novamente.', 'error')
+        return redirect(url_for('fleet_drivers'))
+
+@app.route('/fleet/drivers/<int:driver_id>/assign_vehicle', methods=['POST'])
+@login_required
+def assign_vehicle_to_driver():
+    """Atribuir veículo a motorista"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership or not fleet_membership.can_manage_vehicles:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        driver_id = request.view_args['driver_id']
+        vehicle_id = request.form.get('vehicle_id')
+
+        if not vehicle_id:
+            flash('Selecione um veículo.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Verificar se motorista pertence à frota
+        driver = Driver.query.filter_by(
+            id=driver_id,
+            fleet_id=fleet_membership.fleet_id,
+            is_active=True
+        ).first()
+
+        if not driver:
+            flash('Motorista não encontrado.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Verificar se veículo pertence à frota e está disponível
+        vehicle = Vehicle.query.filter_by(
+            id=vehicle_id,
+            fleet_id=fleet_membership.fleet_id,
+            is_active=True
+        ).first()
+
+        if not vehicle:
+            flash('Veículo não encontrado.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Verificar se veículo já tem motorista
+        if vehicle.driver_id and vehicle.driver_id != driver_id:
+            current_driver = Driver.query.get(vehicle.driver_id)
+            flash(f'Veículo já atribuído a {current_driver.name}.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Atribuir veículo
+        vehicle.driver_id = driver_id
+        db.session.commit()
+
+        flash(f'Veículo {vehicle.brand} {vehicle.model} atribuído a {driver.name}!', 'success')
+        return redirect(url_for('fleet_drivers'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ASSIGN_VEHICLE] Erro: {str(e)}")
+        flash('Erro ao atribuir veículo. Tente novamente.', 'error')
+        return redirect(url_for('fleet_drivers'))
+
+@app.route('/fleet/drivers/<int:driver_id>/remove_vehicle/<int:vehicle_id>', methods=['POST'])
+@login_required
+def remove_vehicle_from_driver():
+    """Remover veículo de motorista"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership or not fleet_membership.can_manage_vehicles:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        driver_id = request.view_args['driver_id']
+        vehicle_id = request.view_args['vehicle_id']
+
+        # Verificar se veículo pertence ao motorista
+        vehicle = Vehicle.query.filter_by(
+            id=vehicle_id,
+            driver_id=driver_id,
+            fleet_id=fleet_membership.fleet_id,
+            is_active=True
+        ).first()
+
+        if not vehicle:
+            flash('Veículo não encontrado ou não pertence ao motorista.', 'error')
+            return redirect(url_for('fleet_drivers'))
+
+        # Remover atribuição
+        driver_name = vehicle.driver.name if vehicle.driver else 'Motorista'
+        vehicle.driver_id = None
+        db.session.commit()
+
+        flash(f'Veículo {vehicle.brand} {vehicle.model} removido de {driver_name}!', 'success')
+        return redirect(url_for('fleet_drivers'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[REMOVE_VEHICLE] Erro: {str(e)}")
+        flash('Erro ao remover veículo. Tente novamente.', 'error')
+        return redirect(url_for('fleet_drivers'))
+
+@app.route('/api/fleet/driver_stats/<int:driver_id>')
+@login_required
+def driver_stats():
+    """Estatísticas de um motorista específico"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        driver_id = request.view_args['driver_id']
+
+        # Verificar se motorista pertence à frota
+        driver = Driver.query.filter_by(
+            id=driver_id,
+            fleet_id=fleet_membership.fleet_id,
+            is_active=True
+        ).first()
+
+        if not driver:
+            return jsonify({'error': 'Motorista não encontrado'}), 404
+
+        # Buscar veículos do motorista
+        vehicles = Vehicle.query.filter_by(driver_id=driver_id, is_active=True).all()
+
+        # Buscar registros de combustível dos últimos 30 dias
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
+
+        fuel_records = db.session.query(FuelRecord).join(Vehicle).filter(
+            Vehicle.driver_id == driver_id,
+            FuelRecord.date >= start_date.date(),
+            FuelRecord.date <= end_date.date()
+        ).all()
+
+        # Calcular estatísticas
+        total_cost = sum(r.total_cost for r in fuel_records)
+        total_liters = sum(r.liters for r in fuel_records)
+        total_km = sum(r.kilometers for r in fuel_records if r.kilometers)
+        avg_consumption = total_km / total_liters if total_liters > 0 else 0
+
+        stats = {
+            'driver_name': driver.name,
+            'vehicles_count': len(vehicles),
+            'fuel_records_30d': len(fuel_records),
+            'total_cost_30d': total_cost,
+            'total_liters_30d': total_liters,
+            'total_km_30d': total_km,
+            'avg_consumption_30d': avg_consumption,
+            'vehicles': [
+                {
+                    'id': v.id,
+                    'name': f"{v.brand} {v.model}",
+                    'license_plate': v.license_plate,
+                    'vehicle_type': v.vehicle_type
+                } for v in vehicles
+            ]
+        }
+
+        return jsonify({'success': True, 'stats': stats})
+
+    except Exception as e:
+        print(f"[DRIVER_STATS] Erro: {str(e)}")
+        return jsonify({'error': 'Erro ao carregar estatísticas'}), 500
+
+# === ROTAS DE RANKING E PERFORMANCE ===
+
+@app.route('/fleet/ranking')
+@login_required
+def fleet_ranking():
+    """Página de ranking de eficiência da frota"""
+    # Verificar se usuário pertence a uma frota
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+
+    if not fleet_membership or not fleet_membership.can_view_reports:
+        flash('Acesso negado aos rankings.', 'error')
+        return redirect(url_for('fleet_dashboard'))
+
+    fleet = fleet_membership.fleet
+
+    # Parâmetros de filtro
+    period_days = int(request.args.get('period', 30))
+    metric = request.args.get('metric', 'efficiency')  # efficiency, cost, consumption
+
+    # Gerar ranking
+    ranking_data = generate_driver_ranking(fleet.id, period_days, metric)
+
+    return render_template('fleet_ranking.html',
+                         fleet=fleet,
+                         fleet_membership=fleet_membership,
+                         ranking_data=ranking_data,
+                         period_days=period_days,
+                         metric=metric)
+
+@app.route('/api/fleet/ranking_data')
+@login_required
+def fleet_ranking_api():
+    """API para dados de ranking em JSON"""
+    try:
+        # Verificar permissões
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+
+        if not fleet_membership or not fleet_membership.can_view_reports:
+            return jsonify({'error': 'Acesso negado'}), 403
+
+        period_days = int(request.args.get('period', 30))
+        metric = request.args.get('metric', 'efficiency')
+
+        ranking_data = generate_driver_ranking(fleet_membership.fleet_id, period_days, metric)
+
+        return jsonify({
+            'success': True,
+            'ranking': ranking_data,
+            'period_days': period_days,
+            'metric': metric,
+            'generated_at': datetime.now().isoformat()
+        })
+
+    except Exception as e:
+        print(f"[RANKING_API] Erro: {str(e)}")
+        return jsonify({'error': 'Erro ao gerar ranking'}), 500
+
+def generate_driver_ranking(fleet_id, period_days=30, metric='efficiency'):
+    """Gerar ranking de motoristas por diferentes métricas"""
+    try:
+        # Período de análise
+        end_date = datetime.now().date()
+        start_date = end_date - timedelta(days=period_days)
+
+        # Buscar motoristas da frota com veículos
+        drivers = db.session.query(Driver).filter(
+            Driver.fleet_id == fleet_id,
+            Driver.is_active == True
+        ).all()
+
+        ranking_list = []
+
+        for driver in drivers:
+            # Buscar veículos do motorista
+            vehicles = Vehicle.query.filter_by(
+                driver_id=driver.id,
+                is_active=True
+            ).all()
+
+            if not vehicles:
+                continue  # Pular motoristas sem veículos
+
+            # Buscar registros de combustível do período
+            vehicle_ids = [v.id for v in vehicles]
+            fuel_records = FuelRecord.query.filter(
+                FuelRecord.vehicle_id.in_(vehicle_ids),
+                FuelRecord.date >= start_date,
+                FuelRecord.date <= end_date
+            ).all()
+
+            if len(fuel_records) < 2:
+                continue  # Precisa de pelo menos 2 registros
+
+            # Calcular métricas
+            total_cost = sum(r.total_cost for r in fuel_records)
+            total_liters = sum(r.liters for r in fuel_records)
+            total_km = sum(r.kilometers for r in fuel_records if r.kilometers)
+
+            # Calcular consumo médio
+            avg_consumption = 0
+            consumption_records = [r for r in fuel_records if r.consumption and r.consumption > 0]
+            if consumption_records:
+                avg_consumption = sum(r.consumption for r in consumption_records) / len(consumption_records)
+
+            # Calcular custo por km
+            cost_per_km = total_cost / total_km if total_km > 0 else 0
+
+            # Calcular custo por litro médio
+            avg_price_per_liter = total_cost / total_liters if total_liters > 0 else 0
+
+            # Calcular economia mensal projetada
+            days_in_period = period_days
+            monthly_projection = (total_cost / days_in_period) * 30 if days_in_period > 0 else 0
+
+            # Score de eficiência (baseado em múltiplos fatores)
+            efficiency_score = calculate_efficiency_score(
+                avg_consumption, cost_per_km, len(fuel_records), total_km
+            )
+
+            # Classificação de performance
+            performance_rating = get_performance_rating(avg_consumption, cost_per_km, efficiency_score)
+
+            driver_data = {
+                'driver': {
+                    'id': driver.id,
+                    'name': driver.name,
+                    'phone': driver.phone,
+                    'cnh_category': driver.cnh_category
+                },
+                'vehicles': [
+                    {
+                        'id': v.id,
+                        'name': f"{v.brand} {v.model}",
+                        'license_plate': v.license_plate,
+                        'vehicle_type': v.vehicle_type
+                    } for v in vehicles
+                ],
+                'metrics': {
+                    'total_cost': total_cost,
+                    'total_liters': total_liters,
+                    'total_km': total_km,
+                    'avg_consumption': avg_consumption,
+                    'cost_per_km': cost_per_km,
+                    'avg_price_per_liter': avg_price_per_liter,
+                    'fuel_records_count': len(fuel_records),
+                    'monthly_projection': monthly_projection,
+                    'efficiency_score': efficiency_score
+                },
+                'performance': performance_rating
+            }
+
+            ranking_list.append(driver_data)
+
+        # Ordenar ranking baseado na métrica selecionada
+        if metric == 'efficiency':
+            ranking_list.sort(key=lambda x: x['metrics']['avg_consumption'], reverse=True)
+        elif metric == 'cost':
+            ranking_list.sort(key=lambda x: x['metrics']['cost_per_km'])
+        elif metric == 'consumption':
+            ranking_list.sort(key=lambda x: x['metrics']['avg_consumption'], reverse=True)
+        elif metric == 'score':
+            ranking_list.sort(key=lambda x: x['metrics']['efficiency_score'], reverse=True)
+
+        # Adicionar posições
+        for i, driver_data in enumerate(ranking_list, 1):
+            driver_data['position'] = i
+
+        # Calcular estatísticas da frota
+        if ranking_list:
+            fleet_stats = {
+                'total_drivers': len(ranking_list),
+                'avg_consumption': sum(d['metrics']['avg_consumption'] for d in ranking_list) / len(ranking_list),
+                'total_cost': sum(d['metrics']['total_cost'] for d in ranking_list),
+                'total_km': sum(d['metrics']['total_km'] for d in ranking_list),
+                'best_consumption': max(d['metrics']['avg_consumption'] for d in ranking_list),
+                'worst_consumption': min(d['metrics']['avg_consumption'] for d in ranking_list)
+            }
+        else:
+            fleet_stats = {
+                'total_drivers': 0,
+                'avg_consumption': 0,
+                'total_cost': 0,
+                'total_km': 0,
+                'best_consumption': 0,
+                'worst_consumption': 0
+            }
+
+        return {
+            'drivers': ranking_list,
+            'fleet_stats': fleet_stats,
+            'period_days': period_days,
+            'metric': metric
+        }
+
+    except Exception as e:
+        print(f"[RANKING] Erro ao gerar ranking: {str(e)}")
+        return {'drivers': [], 'fleet_stats': {}, 'period_days': period_days, 'metric': metric}
+
+def calculate_efficiency_score(consumption, cost_per_km, records_count, total_km):
+    """Calcular score de eficiência baseado em múltiplos fatores"""
+    try:
+        # Score base: consumo (peso 40%)
+        consumption_score = min(consumption * 10, 100) if consumption > 0 else 0
+
+        # Score custo: custo por km (peso 30%) - inverso, menor é melhor
+        cost_score = max(0, 100 - (cost_per_km * 100)) if cost_per_km > 0 else 0
+
+        # Score consistência: número de registros (peso 15%)
+        consistency_score = min(records_count * 5, 100)
+
+        # Score quilometragem: total de km (peso 15%)
+        mileage_score = min(total_km / 100, 100) if total_km > 0 else 0
+
+        # Score final ponderado
+        final_score = (
+            consumption_score * 0.4 +
+            cost_score * 0.3 +
+            consistency_score * 0.15 +
+            mileage_score * 0.15
+        )
+
+        return round(final_score, 1)
+
+    except Exception as e:
+        print(f"[EFFICIENCY_SCORE] Erro: {str(e)}")
+        return 0
+
+def get_performance_rating(consumption, cost_per_km, efficiency_score):
+    """Classificar performance do motorista"""
+    try:
+        if efficiency_score >= 80:
+            return {
+                'rating': 'excellent',
+                'label': 'Excelente',
+                'color': 'success',
+                'icon': '🏆',
+                'description': 'Performance excepcional'
+            }
+        elif efficiency_score >= 65:
+            return {
+                'rating': 'good',
+                'label': 'Bom',
+                'color': 'primary',
+                'icon': '👍',
+                'description': 'Performance acima da média'
+            }
+        elif efficiency_score >= 50:
+            return {
+                'rating': 'average',
+                'label': 'Médio',
+                'color': 'warning',
+                'icon': '📊',
+                'description': 'Performance na média'
+            }
+        else:
+            return {
+                'rating': 'poor',
+                'label': 'Baixo',
+                'color': 'danger',
+                'icon': '📉',
+                'description': 'Performance abaixo da média'
+            }
+
+    except Exception as e:
+        print(f"[PERFORMANCE_RATING] Erro: {str(e)}")
+        return {
+            'rating': 'unknown',
+            'label': 'N/A',
+            'color': 'secondary',
+            'icon': '❓',
+            'description': 'Performance não avaliada'
+        }
+
 # === ROTAS ESPECIAIS ===
 
 @app.route('/fleet-demo')
 def fleet_demo():
     """Demo para frotas empresariais"""
     return render_template('fleet_demo.html')
+
+@app.route('/create_demo_user')
+def create_demo_user():
+    """Criar usuário de demonstração para frotas"""
+    try:
+        # Verificar se já existe
+        existing_user = User.query.filter_by(email='demo@frotas.com').first()
+        if existing_user:
+            return jsonify({
+                'success': True,
+                'message': 'Usuário demo já existe',
+                'email': 'demo@frotas.com',
+                'password': 'demo123'
+            })
+
+        # Criar usuário demo
+        demo_user = User(
+            username='Demo Frotas',
+            email='demo@frotas.com',
+            password=generate_password_hash('demo123'),
+            is_verified=True
+        )
+        db.session.add(demo_user)
+        db.session.flush()  # Para obter o ID
+
+        # Criar frota demo
+        demo_fleet = Fleet(
+            company_name='Transportes Demo Ltda',
+            contact_name='João da Silva',
+            cnpj='12.345.678/0001-90',
+            email='demo@frotas.com',
+            phone='(11) 99999-9999',
+            address='Rua Demo, 123 - São Paulo, SP',
+            subscription_plan='trial',
+            trial_ends_at=datetime.utcnow() + timedelta(days=30)
+        )
+        db.session.add(demo_fleet)
+        db.session.flush()
+
+        # Adicionar usuário como owner da frota
+        fleet_member = FleetMember(
+            fleet_id=demo_fleet.id,
+            user_id=demo_user.id,
+            role='owner',
+            invited_by_id=demo_user.id
+        )
+        db.session.add(fleet_member)
+
+        # Criar alguns veículos demo
+        vehicles_data = [
+            {'brand': 'Mercedes-Benz', 'model': 'Actros 2646', 'year': 2021, 'license_plate': 'ABC-1234', 'fuel_type': 'diesel', 'vehicle_type': 'truck'},
+            {'brand': 'Volvo', 'model': 'FH 460', 'year': 2020, 'license_plate': 'DEF-5678', 'fuel_type': 'diesel', 'vehicle_type': 'truck'},
+            {'brand': 'Scania', 'model': 'R 450', 'year': 2022, 'license_plate': 'GHI-9012', 'fuel_type': 'diesel', 'vehicle_type': 'truck'}
+        ]
+
+        demo_vehicles = []
+        for vehicle_data in vehicles_data:
+            vehicle = Vehicle(
+                user_id=demo_user.id,
+                fleet_id=demo_fleet.id,
+                **vehicle_data
+            )
+            db.session.add(vehicle)
+            demo_vehicles.append(vehicle)
+
+        # Criar alguns motoristas demo
+        drivers_data = [
+            {'name': 'Carlos Santos', 'cpf': '12345678901', 'cnh': '123456789', 'cnh_category': 'E', 'phone': '(11) 98888-8888'},
+            {'name': 'José Silva', 'cpf': '09876543210', 'cnh': '987654321', 'cnh_category': 'D', 'phone': '(11) 97777-7777'},
+            {'name': 'Pedro Oliveira', 'cpf': '11122233344', 'cnh': '111222333', 'cnh_category': 'E', 'phone': '(11) 96666-6666'}
+        ]
+
+        for i, driver_data in enumerate(drivers_data):
+            driver = Driver(
+                fleet_id=demo_fleet.id,
+                **driver_data
+            )
+            db.session.add(driver)
+            db.session.flush()
+
+            # Atribuir veículo ao motorista
+            if i < len(demo_vehicles):
+                demo_vehicles[i].driver_id = driver.id
+
+        # Criar alguns registros de combustível demo
+        from random import uniform, randint
+        for i, vehicle in enumerate(demo_vehicles):
+            db.session.flush()  # Garantir que o veículo tem ID
+
+            for day in range(1, 31):  # Último mês
+                if randint(1, 3) == 1:  # 33% de chance de ter abastecimento no dia
+                    date_record = datetime.now().date() - timedelta(days=day)
+
+                    # Simular dados realistas
+                    liters = uniform(180, 300)  # 180-300L para caminhões
+                    price_per_liter = uniform(5.50, 6.20)  # Preço do diesel
+                    total_cost = liters * price_per_liter
+                    odometer = 50000 + (day * uniform(200, 400))  # Km crescente
+
+                    # Calcular consumo baseado no veículo
+                    if i == 0:  # Mercedes mais eficiente
+                        km_per_liter = uniform(2.8, 3.2)
+                    elif i == 1:  # Volvo médio
+                        km_per_liter = uniform(2.5, 2.9)
+                    else:  # Scania menos eficiente
+                        km_per_liter = uniform(2.2, 2.6)
+
+                    kilometers = liters * km_per_liter
+
+                    fuel_record = FuelRecord(
+                        vehicle_id=vehicle.id,
+                        date=date_record,
+                        odometer=odometer,
+                        liters=liters,
+                        price_per_liter=price_per_liter,
+                        total_cost=total_cost,
+                        kilometers=kilometers,
+                        consumption=km_per_liter,
+                        fuel_type=vehicle.fuel_type,
+                        gas_station=f'Posto Demo {randint(1, 5)}',
+                        notes='Registro demo gerado automaticamente'
+                    )
+                    db.session.add(fuel_record)
+
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Usuário demo criado com sucesso!',
+            'credentials': {
+                'email': 'demo@frotas.com',
+                'password': 'demo123'
+            },
+            'fleet_info': {
+                'company_name': demo_fleet.company_name,
+                'vehicles_count': len(demo_vehicles),
+                'drivers_count': len(drivers_data)
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"[DEMO_USER] Erro: {str(e)}")
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao criar usuário demo: {str(e)}'
+        }), 500
 
 @app.route('/api/run_alerts')
 @login_required

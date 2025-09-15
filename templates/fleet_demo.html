@@ -9,7 +9,12 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.css" rel="stylesheet">
-    
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='favicon-16x16.png') }}">
+
     <style>
         :root {
             --primary-color: #1f2937;
@@ -58,6 +63,7 @@
             position: relative;
             overflow: hidden;
             color: white;
+            padding-top: 80px; /* Espaço para navbar fixa */
         }
 
         .hero-section::before {
@@ -435,6 +441,17 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link" href="#demo">Demo</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i>Login
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn" style="background: var(--gradient-accent); color: white; border-radius: 25px; padding: 8px 20px; margin-left: 10px;"
+                           href="#" onclick="createDemoUser()">
+                            <i class="fas fa-rocket me-1"></i>Demo Gratuito
+                        </a>
                     </li>
                 </ul>
             </div>
@@ -907,6 +924,96 @@
             once: true,
             mirror: false
         });
+
+        // Função para criar usuário demo
+        async function createDemoUser() {
+            try {
+                // Mostrar loading
+                const btn = event.target;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Criando...';
+                btn.disabled = true;
+
+                const response = await fetch('/create_demo_user');
+                const data = await response.json();
+
+                if (data.success) {
+                    // Mostrar modal com credenciais
+                    showDemoCredentials(data.credentials);
+                } else {
+                    alert('Erro ao criar usuário demo: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro de conexão ao criar usuário demo');
+            } finally {
+                // Restaurar botão
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+
+        // Mostrar credenciais do demo
+        function showDemoCredentials(credentials) {
+            const modal = document.createElement('div');
+            modal.className = 'modal fade';
+            modal.id = 'demoModal';
+            modal.innerHTML = `
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-rocket me-2"></i>Demo Criado com Sucesso!
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body text-center">
+                            <div class="alert alert-success">
+                                <i class="fas fa-check-circle fa-2x mb-3"></i>
+                                <h5>Sua conta demo está pronta!</h5>
+                                <p>Use as credenciais abaixo para acessar:</p>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6>📧 <strong>Email:</strong></h6>
+                                    <p class="text-primary">${credentials.email}</p>
+
+                                    <h6>🔒 <strong>Senha:</strong></h6>
+                                    <p class="text-primary">${credentials.password}</p>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info mt-3">
+                                <small>
+                                    <i class="fas fa-info-circle me-1"></i>
+                                    Conta demo com dados fictícios para explorar todas as funcionalidades.
+                                </small>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Fechar
+                            </button>
+                            <a href="/login" class="btn btn-primary">
+                                <i class="fas fa-sign-in-alt me-1"></i>Fazer Login Agora
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            const bootstrapModal = new bootstrap.Modal(modal);
+            bootstrapModal.show();
+
+            // Remover modal do DOM quando fechado
+            modal.addEventListener('hidden.bs.modal', () => {
+                document.body.removeChild(modal);
+            });
+        }
 
         // Smooth scrolling
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {

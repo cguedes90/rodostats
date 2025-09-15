@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Ranking de Eficiência - {{ fleet.company_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text mb-1">
+                    <i class="fas fa-trophy me-2"></i>Ranking de Eficiência
+                </h1>
+                <p class="text-muted mb-0">{{ fleet.company_name }} - {{ ranking_data.fleet_stats.total_drivers }} motoristas</p>
+            </div>
+            <div>
+                <a href="{{ url_for('fleet_dashboard') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter me-2"></i>Filtros de Análise
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="period" class="form-label">Período de Análise</label>
+                        <select class="form-select" id="period" name="period" onchange="this.form.submit()">
+                            <option value="7" {% if period_days == 7 %}selected{% endif %}>Últimos 7 dias</option>
+                            <option value="30" {% if period_days == 30 %}selected{% endif %}>Últimos 30 dias</option>
+                            <option value="90" {% if period_days == 90 %}selected{% endif %}>Últimos 90 dias</option>
+                            <option value="365" {% if period_days == 365 %}selected{% endif %}>Último ano</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="metric" class="form-label">Métrica de Ranking</label>
+                        <select class="form-select" id="metric" name="metric" onchange="this.form.submit()">
+                            <option value="efficiency" {% if metric == 'efficiency' %}selected{% endif %}>Eficiência (km/L)</option>
+                            <option value="cost" {% if metric == 'cost' %}selected{% endif %}>Custo por KM</option>
+                            <option value="score" {% if metric == 'score' %}selected{% endif %}>Score Geral</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="button" class="btn btn-primary" onclick="refreshRanking()">
+                            <i class="fas fa-sync-alt me-1"></i>Atualizar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas da Frota -->
+{% if ranking_data.fleet_stats.total_drivers > 0 %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h4>{{ ranking_data.fleet_stats.total_drivers }}</h4>
+                <p class="text-muted">Motoristas Ativos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-gas-pump fa-2x text-info mb-2"></i>
+                <h4>{{ "%.1f"|format(ranking_data.fleet_stats.avg_consumption) }}</h4>
+                <p class="text-muted">Consumo Médio (km/L)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-trophy fa-2x text-success mb-2"></i>
+                <h4>{{ "%.1f"|format(ranking_data.fleet_stats.best_consumption) }}</h4>
+                <p class="text-muted">Melhor Consumo (km/L)</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-dollar-sign fa-2x text-warning mb-2"></i>
+                <h4>R$ {{ "{:,.2f}"|format(ranking_data.fleet_stats.total_cost) }}</h4>
+                <p class="text-muted">Gasto Total</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pódium (Top 3) -->
+{% if ranking_data.drivers|length >= 3 %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-medal me-2"></i>Pódium dos Campeões
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <!-- 2º Lugar -->
+                    <div class="col-md-4 order-md-1 order-2">
+                        {% set driver = ranking_data.drivers[1] %}
+                        <div class="podium-item silver">
+                            <div class="podium-number">2</div>
+                            <i class="fas fa-medal fa-3x text-secondary mb-2"></i>
+                            <h5>{{ driver.driver.name }}</h5>
+                            <p class="text-muted">{{ driver.metrics.avg_consumption|round(1) }} km/L</p>
+                            <span class="badge bg-{{ driver.performance.color }}">
+                                {{ driver.performance.icon }} {{ driver.performance.label }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 1º Lugar -->
+                    <div class="col-md-4 order-md-2 order-1">
+                        {% set driver = ranking_data.drivers[0] %}
+                        <div class="podium-item gold">
+                            <div class="podium-number">1</div>
+                            <i class="fas fa-crown fa-3x text-warning mb-2"></i>
+                            <h4>{{ driver.driver.name }}</h4>
+                            <p class="text-muted">{{ driver.metrics.avg_consumption|round(1) }} km/L</p>
+                            <span class="badge bg-{{ driver.performance.color }}">
+                                {{ driver.performance.icon }} {{ driver.performance.label }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 3º Lugar -->
+                    <div class="col-md-4 order-md-3 order-3">
+                        {% set driver = ranking_data.drivers[2] %}
+                        <div class="podium-item bronze">
+                            <div class="podium-number">3</div>
+                            <i class="fas fa-medal fa-3x text-danger mb-2"></i>
+                            <h5>{{ driver.driver.name }}</h5>
+                            <p class="text-muted">{{ driver.metrics.avg_consumption|round(1) }} km/L</p>
+                            <span class="badge bg-{{ driver.performance.color }}">
+                                {{ driver.performance.icon }} {{ driver.performance.label }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Ranking Completo -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list-ol me-2"></i>Ranking Completo
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Pos.</th>
+                                <th>Motorista</th>
+                                <th>Veículos</th>
+                                <th>Consumo Médio</th>
+                                <th>Custo/KM</th>
+                                <th>Total Gasto</th>
+                                <th>Score</th>
+                                <th>Performance</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for driver in ranking_data.drivers %}
+                            <tr class="{% if loop.index <= 3 %}table-success{% endif %}">
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        {% if loop.index == 1 %}
+                                            <i class="fas fa-crown text-warning me-2"></i>
+                                        {% elif loop.index == 2 %}
+                                            <i class="fas fa-medal text-secondary me-2"></i>
+                                        {% elif loop.index == 3 %}
+                                            <i class="fas fa-medal text-danger me-2"></i>
+                                        {% endif %}
+                                        <strong>{{ loop.index }}º</strong>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar me-3">
+                                            <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                        </div>
+                                        <div>
+                                            <strong>{{ driver.driver.name }}</strong>
+                                            {% if driver.driver.cnh_category %}
+                                                <br><small class="text-muted">CNH: {{ driver.driver.cnh_category }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    {% for vehicle in driver.vehicles %}
+                                        <div class="mb-1">
+                                            <span class="badge bg-primary">
+                                                {{ vehicle.name }}
+                                                <small>({{ vehicle.license_plate }})</small>
+                                            </span>
+                                        </div>
+                                    {% endfor %}
+                                </td>
+                                <td>
+                                    <span class="fw-bold text-success">
+                                        {{ "%.1f"|format(driver.metrics.avg_consumption) }} km/L
+                                    </span>
+                                </td>
+                                <td>
+                                    R$ {{ "%.3f"|format(driver.metrics.cost_per_km) }}
+                                </td>
+                                <td>
+                                    R$ {{ "{:,.2f}"|format(driver.metrics.total_cost) }}
+                                </td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="progress me-2" style="width: 60px; height: 20px;">
+                                            <div class="progress-bar bg-{{ driver.performance.color }}"
+                                                 style="width: {{ driver.metrics.efficiency_score }}%"></div>
+                                        </div>
+                                        <span class="small">{{ "%.0f"|format(driver.metrics.efficiency_score) }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ driver.performance.color }}">
+                                        {{ driver.performance.icon }} {{ driver.performance.label }}
+                                    </span>
+                                    <br><small class="text-muted">{{ driver.performance.description }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- Estado Vazio -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-chart-line fa-4x text-muted mb-3"></i>
+                <h4>Nenhum dado disponível</h4>
+                <p class="text-muted">
+                    Não há dados suficientes para gerar o ranking no período selecionado.
+                    <br>Certifique-se de que:
+                </p>
+                <ul class="list-unstyled text-muted">
+                    <li>• Motoristas tenham veículos atribuídos</li>
+                    <li>• Existam registros de abastecimento</li>
+                    <li>• O período selecionado contenha dados</li>
+                </ul>
+                <a href="{{ url_for('fleet_drivers') }}" class="btn btn-primary">
+                    <i class="fas fa-users me-1"></i>Gerenciar Motoristas
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+// Função para atualizar ranking via AJAX
+async function refreshRanking() {
+    const period = document.getElementById('period').value;
+    const metric = document.getElementById('metric').value;
+
+    try {
+        showLoading(true);
+
+        const response = await fetch(`/api/fleet/ranking_data?period=${period}&metric=${metric}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // Recarregar página com novos parâmetros
+            window.location.href = `?period=${period}&metric=${metric}`;
+        } else {
+            showError('Erro ao atualizar ranking: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        showError('Erro de conexão ao atualizar ranking');
+    } finally {
+        showLoading(false);
+    }
+}
+
+function showLoading(show) {
+    // Implementar loading spinner se necessário
+    if (show) {
+        document.body.style.cursor = 'wait';
+    } else {
+        document.body.style.cursor = 'default';
+    }
+}
+
+function showError(message) {
+    alert(message); // Simplificado - pode ser melhorado com toast
+}
+
+// Auto-refresh a cada 5 minutos
+setInterval(() => {
+    console.log('Auto-refresh do ranking...');
+    // refreshRanking(); // Descomentrar se quiser auto-refresh
+}, 300000);
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.podium-item {
+    position: relative;
+    padding: 20px;
+    margin: 10px;
+    border-radius: 15px;
+    transition: transform 0.3s ease;
+}
+
+.podium-item:hover {
+    transform: translateY(-5px);
+}
+
+.podium-item.gold {
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    transform: scale(1.1);
+}
+
+.podium-item.silver {
+    background: linear-gradient(135deg, #C0C0C0, #808080);
+}
+
+.podium-item.bronze {
+    background: linear-gradient(135deg, #CD7F32, #8B4513);
+}
+
+.podium-number {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    background: rgba(0,0,0,0.8);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.table th, .table td {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    vertical-align: middle;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.progress {
+    border-radius: 10px;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.table-success {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+}
+</style>
+{% endblock %}

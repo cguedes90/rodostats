@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}Motoristas - {{ fleet.company_name }}{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text mb-1">
+                    <i class="fas fa-users me-2"></i>Gestão de Motoristas
+                </h1>
+                <p class="text-muted mb-0">{{ fleet.company_name }} - {{ drivers|length }} motoristas</p>
+            </div>
+            <div>
+                <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#addDriverModal">
+                    <i class="fas fa-plus me-1"></i>Adicionar Motorista
+                </button>
+                <a href="{{ url_for('fleet_dashboard') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas Gerais -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-primary mb-2"></i>
+                <h4>{{ drivers|length }}</h4>
+                <p class="text-muted">Motoristas Ativos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-car fa-2x text-success mb-2"></i>
+                <h4>{{ (driver_vehicles.values() | list | sum | length) }}</h4>
+                <p class="text-muted">Veículos Atribuídos</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-car-side fa-2x text-warning mb-2"></i>
+                <h4>{{ available_vehicles|length }}</h4>
+                <p class="text-muted">Veículos Disponíveis</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-chart-line fa-2x text-info mb-2"></i>
+                <h4>100%</h4>
+                <p class="text-muted">Taxa de Ocupação</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Motoristas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Lista de Motoristas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if drivers %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Motorista</th>
+                                    <th>Contato</th>
+                                    <th>CNH</th>
+                                    <th>Veículos</th>
+                                    <th>Performance</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for driver in drivers %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar me-3">
+                                                <i class="fas fa-user-circle fa-2x text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <strong>{{ driver.name }}</strong>
+                                                {% if driver.cpf %}
+                                                    <br><small class="text-muted">CPF: {{ driver.cpf[:3] }}.***.***-{{ driver.cpf[-2:] }}</small>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if driver.phone %}
+                                            <i class="fas fa-phone me-1"></i>{{ driver.phone }}<br>
+                                        {% endif %}
+                                        {% if driver.email %}
+                                            <i class="fas fa-envelope me-1"></i>{{ driver.email }}
+                                        {% endif %}
+                                        {% if not driver.phone and not driver.email %}
+                                            <span class="text-muted">Não informado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if driver.cnh %}
+                                            <span class="badge bg-success">{{ driver.cnh_category or 'B' }}</span><br>
+                                            <small class="text-muted">{{ driver.cnh }}</small>
+                                        {% else %}
+                                            <span class="text-muted">Não informado</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% set vehicles = driver_vehicles.get(driver.id, []) %}
+                                        {% if vehicles %}
+                                            {% for vehicle in vehicles %}
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="badge bg-primary">
+                                                        {{ vehicle.brand }} {{ vehicle.model }}
+                                                        <small>({{ vehicle.license_plate }})</small>
+                                                    </span>
+                                                    <form method="post" action="{{ url_for('remove_vehicle_from_driver', driver_id=driver.id, vehicle_id=vehicle.id) }}" class="d-inline">
+                                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                                onclick="return confirm('Remover veículo do motorista?')"
+                                                                title="Remover veículo">
+                                                            <i class="fas fa-times"></i>
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            {% endfor %}
+                                            <!-- Botão para adicionar mais veículos -->
+                                            {% if available_vehicles %}
+                                                <button class="btn btn-sm btn-outline-success mt-1"
+                                                        onclick="showAssignVehicleModal({{ driver.id }}, '{{ driver.name }}')">
+                                                    <i class="fas fa-plus me-1"></i>Atribuir Veículo
+                                                </button>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">Nenhum veículo</span>
+                                            {% if available_vehicles %}
+                                                <br>
+                                                <button class="btn btn-sm btn-outline-primary mt-1"
+                                                        onclick="showAssignVehicleModal({{ driver.id }}, '{{ driver.name }}')">
+                                                    <i class="fas fa-plus me-1"></i>Atribuir Veículo
+                                                </button>
+                                            {% endif %}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-info"
+                                                onclick="loadDriverStats({{ driver.id }})">
+                                            <i class="fas fa-chart-bar me-1"></i>Ver Stats
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="editDriver({{ driver.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger"
+                                                    onclick="deactivateDriver({{ driver.id }})">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                        <h5>Nenhum motorista cadastrado</h5>
+                        <p class="text-muted">Comece adicionando motoristas à sua frota.</p>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addDriverModal">
+                            <i class="fas fa-plus me-1"></i>Adicionar Primeiro Motorista
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Adicionar Motorista -->
+<div class="modal fade" id="addDriverModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Adicionar Motorista
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('add_fleet_driver') }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="name" class="form-label">Nome *</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cpf" class="form-label">CPF</label>
+                            <input type="text" class="form-control" id="cpf" name="cpf"
+                                   placeholder="000.000.000-00" maxlength="14">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cnh" class="form-label">CNH</label>
+                            <input type="text" class="form-control" id="cnh" name="cnh">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="cnh_category" class="form-label">Categoria CNH</label>
+                            <select class="form-select" id="cnh_category" name="cnh_category">
+                                <option value="">Selecionar</option>
+                                <option value="A">A - Motocicleta</option>
+                                <option value="B">B - Carro</option>
+                                <option value="C">C - Caminhão pequeno</option>
+                                <option value="D">D - Ônibus</option>
+                                <option value="E">E - Caminhão grande</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="phone" class="form-label">Telefone</label>
+                            <input type="tel" class="form-control" id="phone" name="phone"
+                                   placeholder="(11) 99999-9999">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">E-mail</label>
+                            <input type="email" class="form-control" id="email" name="email">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Salvar Motorista
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Atribuir Veículo -->
+<div class="modal fade" id="assignVehicleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-car me-2"></i>Atribuir Veículo
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" id="assignVehicleForm">
+                <div class="modal-body">
+                    <p>Selecione um veículo para atribuir ao motorista <strong id="driverNameModal"></strong>:</p>
+
+                    <div class="mb-3">
+                        <label for="vehicle_id" class="form-label">Veículo Disponível</label>
+                        <select class="form-select" id="vehicle_id" name="vehicle_id" required>
+                            <option value="">Selecionar veículo...</option>
+                            {% for vehicle in available_vehicles %}
+                                <option value="{{ vehicle.id }}">
+                                    {{ vehicle.brand }} {{ vehicle.model }} - {{ vehicle.license_plate }}
+                                    {% if vehicle.vehicle_type %}
+                                        ({{ vehicle.vehicle_type }})
+                                    {% endif %}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    {% if not available_vehicles %}
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Todos os veículos já estão atribuídos a motoristas.
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    {% if available_vehicles %}
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-link me-1"></i>Atribuir Veículo
+                        </button>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Estatísticas do Motorista -->
+<div class="modal fade" id="driverStatsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-chart-bar me-2"></i>Estatísticas do Motorista
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="driverStatsContent">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Carregando...</span>
+                    </div>
+                    <p class="mt-2">Carregando estatísticas...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Função para mostrar modal de atribuição de veículo
+function showAssignVehicleModal(driverId, driverName) {
+    document.getElementById('driverNameModal').textContent = driverName;
+    document.getElementById('assignVehicleForm').action = `/fleet/drivers/${driverId}/assign_vehicle`;
+
+    const modal = new bootstrap.Modal(document.getElementById('assignVehicleModal'));
+    modal.show();
+}
+
+// Função para carregar estatísticas do motorista
+async function loadDriverStats(driverId) {
+    const modalElement = document.getElementById('driverStatsModal');
+    const contentElement = document.getElementById('driverStatsContent');
+
+    // Mostrar loading
+    contentElement.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Carregando estatísticas...</p>
+        </div>
+    `;
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+
+    try {
+        const response = await fetch(`/api/fleet/driver_stats/${driverId}`);
+        const data = await response.json();
+
+        if (data.success) {
+            displayDriverStats(data.stats);
+        } else {
+            contentElement.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${data.error || 'Erro ao carregar estatísticas'}
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        contentElement.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Erro de conexão ao carregar estatísticas
+            </div>
+        `;
+    }
+}
+
+// Função para exibir estatísticas do motorista
+function displayDriverStats(stats) {
+    const content = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>📊 Informações Gerais</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Motorista:</strong></td>
+                        <td>${stats.driver_name}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Veículos:</strong></td>
+                        <td>${stats.vehicles_count}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Abastecimentos (30d):</strong></td>
+                        <td>${stats.fuel_records_30d}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>⛽ Performance (30 dias)</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Total Gasto:</strong></td>
+                        <td>R$ ${stats.total_cost_30d.toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total Litros:</strong></td>
+                        <td>${stats.total_liters_30d.toFixed(1)} L</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Total KM:</strong></td>
+                        <td>${stats.total_km_30d.toFixed(0)} km</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Consumo Médio:</strong></td>
+                        <td>${stats.avg_consumption_30d.toFixed(1)} km/L</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        ${stats.vehicles.length > 0 ? `
+        <div class="mt-4">
+            <h6>🚗 Veículos Atribuídos</h6>
+            <div class="row">
+                ${stats.vehicles.map(vehicle => `
+                    <div class="col-md-6 mb-2">
+                        <div class="card">
+                            <div class="card-body p-2">
+                                <strong>${vehicle.name}</strong><br>
+                                <small class="text-muted">${vehicle.license_plate} - ${vehicle.vehicle_type}</small>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
+        <div class="alert alert-success mt-3">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Estatísticas atualizadas!</strong> Dados dos últimos 30 dias.
+        </div>
+    `;
+
+    document.getElementById('driverStatsContent').innerHTML = content;
+}
+
+// Máscara para CPF
+document.getElementById('cpf').addEventListener('input', function() {
+    let value = this.value.replace(/\D/g, '');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d)/, '$1.$2');
+    value = value.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    this.value = value;
+});
+
+// Máscara para telefone
+document.getElementById('phone').addEventListener('input', function() {
+    let value = this.value.replace(/\D/g, '');
+    value = value.replace(/(\d{2})(\d)/, '($1) $2');
+    value = value.replace(/(\d{5})(\d)/, '$1-$2');
+    this.value = value;
+});
+
+// Funções placeholder para editar e desativar motorista
+function editDriver(driverId) {
+    alert('Funcionalidade de edição será implementada em breve!');
+}
+
+function deactivateDriver(driverId) {
+    if (confirm('Tem certeza que deseja desativar este motorista?')) {
+        alert('Funcionalidade de desativação será implementada em breve!');
+    }
+}
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+}
+
+.table th, .table td {
+    border-top: 1px solid rgba(255,255,255,0.1);
+    vertical-align: middle;
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %}

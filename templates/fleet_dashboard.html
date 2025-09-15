@@ -38,8 +38,17 @@
                         <li><a class="dropdown-item" href="{{ url_for('vehicles') }}">
                             <i class="fas fa-car me-2"></i>Gerenciar Veículos
                         </a></li>
-                        <li><a class="dropdown-item" href="#" onclick="generateReport()">
-                            <i class="fas fa-file-pdf me-2"></i>Relatório PDF
+                        <li><a class="dropdown-item" href="{{ url_for('fleet_drivers') }}">
+                            <i class="fas fa-users me-2"></i>Gerenciar Motoristas
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('fleet_ranking') }}">
+                            <i class="fas fa-trophy me-2"></i>Ranking de Eficiência
+                        </a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('fleet_reports') }}">
+                            <i class="fas fa-chart-line me-2"></i>Relatórios Avançados
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="generateQuickReport()">
+                            <i class="fas fa-file-pdf me-2"></i>Relatório Rápido (PDF)
                         </a></li>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="{{ url_for('dashboard') }}">
@@ -312,8 +321,30 @@
 </div>
 
 <script>
-function generateReport() {
-    alert('Funcionalidade de relatório em PDF será implementada em breve!');
+function generateQuickReport() {
+    // Gerar relatório PDF rápido (30 dias)
+    const url = '/fleet/generate_report?type=pdf&period=30';
+
+    // Criar link de download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = true;
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Mostrar feedback
+    const toast = document.createElement('div');
+    toast.className = 'alert alert-success position-fixed';
+    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; width: 300px;';
+    toast.innerHTML = '<i class="fas fa-download me-2"></i>Relatório sendo gerado...';
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        document.body.removeChild(toast);
+    }, 3000);
 }
 
 // Atualizar KPIs a cada 5 minutos
