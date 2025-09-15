@@ -1,0 +1,250 @@
+{% extends "base.html" %}
+
+{% block title %}Super Admin - Dashboard{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text mb-1">
+                    <i class="fas fa-crown me-2"></i>Super Admin Dashboard
+                </h1>
+                <p class="text-muted mb-0">Controle total do Rodo Stats</p>
+            </div>
+            <div>
+                <span class="badge bg-danger fs-6">
+                    <i class="fas fa-shield-alt me-1"></i>SUPER ADMIN
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estatísticas Principais -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card text-center">
+            <div class="card-body">
+                <i class="fas fa-users fa-2x text-primary mb-3"></i>
+                <h3 class="metric-value">{{ stats.total_users }}</h3>
+                <p class="metric-label">Total de Usuários</p>
+                <small class="text-success">
+                    <i class="fas fa-arrow-up"></i> {{ stats.recent_users }} novos (30d)
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card text-center">
+            <div class="card-body">
+                <i class="fas fa-building fa-2x text-info mb-3"></i>
+                <h3 class="metric-value">{{ stats.total_fleets }}</h3>
+                <p class="metric-label">Frotas Empresariais</p>
+                <small class="text-success">
+                    <i class="fas fa-arrow-up"></i> {{ stats.recent_fleets }} novas (30d)
+                </small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card text-center">
+            <div class="card-body">
+                <i class="fas fa-user fa-2x text-warning mb-3"></i>
+                <h3 class="metric-value">{{ stats.total_pf_users }}</h3>
+                <p class="metric-label">Usuários PF</p>
+                <small class="text-muted">Pessoa Física</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card text-center">
+            <div class="card-body">
+                <i class="fas fa-dollar-sign fa-2x text-success mb-3"></i>
+                <h3 class="metric-value">{{ stats.premium_users + stats.enterprise_users }}</h3>
+                <p class="metric-label">Contas Pagas</p>
+                <small class="text-muted">Premium + Enterprise</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navegação Principal -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Gestão de Usuários PF
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <h4 class="text-success">{{ stats.free_users }}</h4>
+                        <small class="text-muted">Gratuito</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-warning">{{ stats.premium_users }}</h4>
+                        <small class="text-muted">Premium</small>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-primary">{{ stats.enterprise_users }}</h4>
+                        <small class="text-muted">Enterprise</small>
+                    </div>
+                </div>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-primary w-100">
+                    <i class="fas fa-cog me-2"></i>Gerenciar Usuários PF
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-building me-2"></i>Gestão de Frotas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="text-center">
+                        <h4 class="text-info">{{ stats.total_fleets }}</h4>
+                        <small class="text-muted">Total de Frotas</small>
+                    </div>
+                    <div class="text-center">
+                        <h4 class="text-success">{{ stats.recent_fleets }}</h4>
+                        <small class="text-muted">Novas (30d)</small>
+                    </div>
+                </div>
+                <a href="{{ url_for('admin_fleets') }}" class="btn btn-primary w-100">
+                    <i class="fas fa-cog me-2"></i>Gerenciar Frotas
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ações Rápidas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt me-2"></i>Ações Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-success w-100" onclick="createDemoFleet()">
+                            <i class="fas fa-plus me-2"></i>Criar Frota Demo
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-warning w-100" onclick="upgradeUser()">
+                            <i class="fas fa-arrow-up me-2"></i>Upgrade Usuário
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-outline-info w-100" onclick="viewSystemLogs()">
+                            <i class="fas fa-list me-2"></i>Logs do Sistema
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('create_demo_user') }}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-user-plus me-2"></i>Dados Demo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function createDemoFleet() {
+    fetch('/create_demo_user')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Frota demo criada com sucesso!\nEmail: ' + data.credentials.email + '\nSenha: ' + data.credentials.password);
+            } else {
+                alert('Erro: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            alert('Erro ao criar frota demo');
+        });
+}
+
+function upgradeUser() {
+    const email = prompt('Digite o email do usuário para upgrade:');
+    if (email) {
+        alert('Funcionalidade em desenvolvimento.\nUsuário: ' + email + '\nSerá implementada na próxima versão.');
+    }
+}
+
+function viewSystemLogs() {
+    alert('Logs do Sistema\n\nFuncionalidade em desenvolvimento.\nEm breve você poderá visualizar:\n- Logs de acesso\n- Logs de erro\n- Métricas de performance\n- Atividade dos usuários');
+}
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.metric-card {
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+    border: 1px solid rgba(102, 126, 234, 0.3);
+    transition: transform 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+}
+
+.badge {
+    border-radius: 25px;
+    padding: 8px 16px;
+}
+</style>
+{% endblock %}

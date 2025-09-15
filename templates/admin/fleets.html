@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Frotas - Super Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text mb-1">
+                    <i class="fas fa-building me-2"></i>Frotas Empresariais
+                </h1>
+                <p class="text-muted mb-0">Gestão de empresas e organizações</p>
+            </div>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search me-2"></i>Filtros
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Buscar</label>
+                        <input type="text" class="form-control" id="search" name="search"
+                               value="{{ search }}" placeholder="Nome da empresa ou email...">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="subscription_plan" class="form-label">Plano</label>
+                        <select class="form-select" id="subscription_plan" name="subscription_plan">
+                            <option value="">Todos</option>
+                            <option value="trial" {% if subscription_plan == 'trial' %}selected{% endif %}>Trial</option>
+                            <option value="small" {% if subscription_plan == 'small' %}selected{% endif %}>Small</option>
+                            <option value="enterprise" {% if subscription_plan == 'enterprise' %}selected{% endif %}>Enterprise</option>
+                            <option value="custom" {% if subscription_plan == 'custom' %}selected{% endif %}>Custom</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Filtrar
+                        </button>
+                        <a href="{{ url_for('admin_fleets') }}" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-times me-1"></i>Limpar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Frotas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Frotas ({{ fleets.total }} encontradas)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if fleets.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Empresa</th>
+                                    <th>Contato</th>
+                                    <th>Plano</th>
+                                    <th>Limites</th>
+                                    <th>Criado em</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for fleet in fleets.items %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong>{{ fleet.company_name }}</strong>
+                                            {% if fleet.cnpj %}
+                                                <br><small class="text-muted">CNPJ: {{ fleet.cnpj }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ fleet.email }}
+                                        {% if fleet.phone %}
+                                            <br><small class="text-muted">{{ fleet.phone }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if fleet.subscription_plan == 'trial' %}
+                                            <span class="badge bg-warning">Trial</span>
+                                        {% elif fleet.subscription_plan == 'small' %}
+                                            <span class="badge bg-primary">Small</span>
+                                        {% elif fleet.subscription_plan == 'enterprise' %}
+                                            <span class="badge bg-success">Enterprise</span>
+                                        {% elif fleet.subscription_plan == 'custom' %}
+                                            <span class="badge bg-danger">Custom</span>
+                                        {% endif %}
+
+                                        {% if fleet.trial_ends_at %}
+                                            <br><small class="text-muted">
+                                                Trial até: {{ fleet.trial_ends_at.strftime('%d/%m/%Y') }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <small>
+                                            <i class="fas fa-car"></i> {{ fleet.max_vehicles }} veículos
+                                            <br>
+                                            <i class="fas fa-users"></i> {{ fleet.max_users }} usuários
+                                        </small>
+                                    </td>
+                                    <td>
+                                        {{ fleet.created_at.strftime('%d/%m/%Y') }}
+                                        <br><small class="text-muted">{{ fleet.created_at.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="updatePlan({{ fleet.id }}, '{{ fleet.company_name }}', '{{ fleet.subscription_plan }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-info" onclick="viewDetails({{ fleet.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    {% if fleets.pages > 1 %}
+                    <nav aria-label="Navegação da página">
+                        <ul class="pagination justify-content-center">
+                            {% if fleets.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_fleets', page=fleets.prev_num, search=search, subscription_plan=subscription_plan) }}">Anterior</a>
+                                </li>
+                            {% endif %}
+
+                            {% for page_num in fleets.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != fleets.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin_fleets', page=page_num, search=search, subscription_plan=subscription_plan) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if fleets.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_fleets', page=fleets.next_num, search=search, subscription_plan=subscription_plan) }}">Próximo</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-building fa-4x text-muted mb-3"></i>
+                        <h4>Nenhuma frota encontrada</h4>
+                        <p class="text-muted">Tente ajustar os filtros de busca.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atualizar Plano -->
+<div class="modal fade" id="updatePlanModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Plano da Frota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin_update_fleet_plan') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="modal_fleet_id" name="fleet_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Empresa:</label>
+                        <strong id="modal_company_name"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal_subscription_plan" class="form-label">Plano</label>
+                        <select class="form-select" id="modal_subscription_plan" name="subscription_plan" required>
+                            <option value="trial">Trial (5 veículos, 3 usuários)</option>
+                            <option value="small">Small (20 veículos, 10 usuários)</option>
+                            <option value="enterprise">Enterprise (100 veículos, 50 usuários)</option>
+                            <option value="custom">Custom (999 veículos, 999 usuários)</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6>Planos disponíveis:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Trial:</strong> 30 dias grátis, recursos limitados</li>
+                            <li><strong>Small:</strong> Para pequenas empresas</li>
+                            <li><strong>Enterprise:</strong> Para grandes organizações</li>
+                            <li><strong>Custom:</strong> Recursos personalizados</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar Plano</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Detalhes da Frota -->
+<div class="modal fade" id="detailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Detalhes da Frota</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="fleetDetailsContent">
+                <!-- Conteúdo será carregado via JavaScript -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function updatePlan(fleetId, companyName, currentPlan) {
+    document.getElementById('modal_fleet_id').value = fleetId;
+    document.getElementById('modal_company_name').textContent = companyName;
+    document.getElementById('modal_subscription_plan').value = currentPlan;
+
+    const modal = new bootstrap.Modal(document.getElementById('updatePlanModal'));
+    modal.show();
+}
+
+function viewDetails(fleetId) {
+    // Simular carregamento de detalhes da frota
+    const detailsContent = document.getElementById('fleetDetailsContent');
+
+    detailsContent.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Carregando...</span>
+            </div>
+            <p class="mt-2">Carregando detalhes da frota...</p>
+        </div>
+    `;
+
+    const modal = new bootstrap.Modal(document.getElementById('detailsModal'));
+    modal.show();
+
+    // Simular resposta da API
+    setTimeout(() => {
+        detailsContent.innerHTML = `
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>📊 Estatísticas</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Membros:</strong> 8 usuários</li>
+                        <li><strong>Veículos:</strong> 15 cadastrados</li>
+                        <li><strong>Última atividade:</strong> Hoje</li>
+                        <li><strong>Consumo médio:</strong> 8.5 km/L</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>💰 Informações Financeiras</h6>
+                    <ul class="list-unstyled">
+                        <li><strong>Gasto mensal:</strong> R$ 12.450,00</li>
+                        <li><strong>Economia estimada:</strong> R$ 2.100,00</li>
+                        <li><strong>ROI:</strong> 85%</li>
+                    </ul>
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="alert alert-info">
+                <h6>🚀 Funcionalidades em Desenvolvimento</h6>
+                <p class="mb-0">
+                    Esta visualização detalhada será expandida com:
+                    <br>• Gráficos de desempenho
+                    <br>• Histórico de mudanças de plano
+                    <br>• Análise de uso das funcionalidades
+                    <br>• Relatórios personalizados
+                </p>
+            </div>
+        `;
+    }, 1500);
+}
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+
+.badge {
+    font-size: 0.75em;
+}
+</style>
+{% endblock %}

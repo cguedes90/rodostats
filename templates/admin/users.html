@@ -1,0 +1,317 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Usuários PF - Super Admin{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="gradient-text mb-1">
+                    <i class="fas fa-users me-2"></i>Usuários PF
+                </h1>
+                <p class="text-muted mb-0">Gestão de contas Pessoa Física</p>
+            </div>
+            <div>
+                <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-light">
+                    <i class="fas fa-arrow-left me-1"></i>Voltar ao Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros e Busca -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search me-2"></i>Filtros
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="GET" class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Buscar</label>
+                        <input type="text" class="form-control" id="search" name="search"
+                               value="{{ search }}" placeholder="Nome ou email...">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="account_type" class="form-label">Tipo de Conta</label>
+                        <select class="form-select" id="account_type" name="account_type">
+                            <option value="">Todos</option>
+                            <option value="free" {% if account_type == 'free' %}selected{% endif %}>Gratuito</option>
+                            <option value="premium" {% if account_type == 'premium' %}selected{% endif %}>Premium</option>
+                            <option value="enterprise" {% if account_type == 'enterprise' %}selected{% endif %}>Enterprise</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i>Filtrar
+                        </button>
+                        <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary ms-2">
+                            <i class="fas fa-times me-1"></i>Limpar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Usuários -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list me-2"></i>Usuários ({{ users.total }} encontrados)
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if users.items %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Usuário</th>
+                                    <th>Email</th>
+                                    <th>Conta</th>
+                                    <th>Criado em</th>
+                                    <th>Status</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users.items %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar me-3">
+                                                <i class="fas fa-user-circle fa-2x text-primary"></i>
+                                            </div>
+                                            <div>
+                                                <strong>{{ user.username }}</strong>
+                                                {% if user.user_role == 'admin' %}
+                                                    <br><span class="badge bg-warning">Admin</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ user.email }}
+                                        {% if not user.is_active %}
+                                            <br><small class="text-danger">Inativo</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if user.account_type == 'free' %}
+                                            <span class="badge bg-secondary">Gratuito</span>
+                                        {% elif user.account_type == 'premium' %}
+                                            <span class="badge bg-warning">Premium</span>
+                                        {% elif user.account_type == 'enterprise' %}
+                                            <span class="badge bg-primary">Enterprise</span>
+                                        {% endif %}
+
+                                        {% if user.account_expires_at %}
+                                            <br><small class="text-muted">
+                                                Expira: {{ user.account_expires_at.strftime('%d/%m/%Y') }}
+                                            </small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ user.created_at.strftime('%d/%m/%Y') }}
+                                        <br><small class="text-muted">{{ user.created_at.strftime('%H:%M') }}</small>
+                                    </td>
+                                    <td>
+                                        {% if user.is_active %}
+                                            <span class="badge bg-success">Ativo</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inativo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="updateAccount({{ user.id }}, '{{ user.username }}', '{{ user.account_type }}')">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Paginação -->
+                    {% if users.pages > 1 %}
+                    <nav aria-label="Navegação da página">
+                        <ul class="pagination justify-content-center">
+                            {% if users.has_prev %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_users', page=users.prev_num, search=search, account_type=account_type) }}">Anterior</a>
+                                </li>
+                            {% endif %}
+
+                            {% for page_num in users.iter_pages() %}
+                                {% if page_num %}
+                                    {% if page_num != users.page %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="{{ url_for('admin_users', page=page_num, search=search, account_type=account_type) }}">{{ page_num }}</a>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ page_num }}</span>
+                                        </li>
+                                    {% endif %}
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link">…</span>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if users.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="{{ url_for('admin_users', page=users.next_num, search=search, account_type=account_type) }}">Próximo</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                    {% endif %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                        <h4>Nenhum usuário encontrado</h4>
+                        <p class="text-muted">Tente ajustar os filtros de busca.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Atualizar Conta -->
+<div class="modal fade" id="updateAccountModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atualizar Conta de Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin_update_user_account') }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" id="modal_user_id" name="user_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Usuário:</label>
+                        <strong id="modal_username"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal_account_type" class="form-label">Tipo de Conta</label>
+                        <select class="form-select" id="modal_account_type" name="account_type" required>
+                            <option value="free">Gratuito</option>
+                            <option value="premium">Premium</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" id="expires_field" style="display: none;">
+                        <label for="modal_expires_months" class="form-label">Duração (meses)</label>
+                        <select class="form-select" id="modal_expires_months" name="expires_months">
+                            <option value="1">1 mês</option>
+                            <option value="3">3 meses</option>
+                            <option value="6">6 meses</option>
+                            <option value="12" selected>12 meses</option>
+                            <option value="24">24 meses</option>
+                        </select>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6>Recursos por tipo de conta:</h6>
+                        <ul class="mb-0">
+                            <li><strong>Gratuito:</strong> Funcionalidades básicas</li>
+                            <li><strong>Premium:</strong> Relatórios avançados, suporte prioritário</li>
+                            <li><strong>Enterprise:</strong> API, branding personalizado, recursos ilimitados</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Atualizar Conta</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateAccount(userId, username, currentType) {
+    document.getElementById('modal_user_id').value = userId;
+    document.getElementById('modal_username').textContent = username;
+    document.getElementById('modal_account_type').value = currentType;
+
+    toggleExpiresField();
+
+    const modal = new bootstrap.Modal(document.getElementById('updateAccountModal'));
+    modal.show();
+}
+
+function toggleExpiresField() {
+    const accountType = document.getElementById('modal_account_type').value;
+    const expiresField = document.getElementById('expires_field');
+
+    if (accountType === 'premium' || accountType === 'enterprise') {
+        expiresField.style.display = 'block';
+    } else {
+        expiresField.style.display = 'none';
+    }
+}
+
+document.getElementById('modal_account_type').addEventListener('change', toggleExpiresField);
+</script>
+
+<style>
+.gradient-text {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 15px 15px 0 0 !important;
+    border: none;
+}
+
+.btn-primary {
+    background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(45deg, #5a6fd8 0%, #6a4190 100%);
+    transform: translateY(-1px);
+}
+
+.avatar {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.table th, .table td {
+    vertical-align: middle;
+}
+</style>
+{% endblock %}

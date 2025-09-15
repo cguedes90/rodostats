@@ -4,6 +4,7 @@
 
 import os
 from datetime import datetime, timedelta
+from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
@@ -472,22 +473,52 @@ def oil_change(vehicle_id):
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
-    
+
+    # Sistema de permissões e tipos de conta
+    user_role = db.Column(db.String(20), default='user')  # user, admin, super_admin
+    account_type = db.Column(db.String(20), default='free')  # free, premium, enterprise
+    account_expires_at = db.Column(db.DateTime, nullable=True)
+    premium_features = db.Column(db.JSON, default=lambda: {
+        'unlimited_vehicles': False,
+        'advanced_reports': False,
+        'api_access': False,
+        'priority_support': False,
+        'custom_branding': False
+    })
+
     # Relacionamentos
     vehicles = db.relationship('Vehicle', backref='owner', lazy=True, cascade='all, delete-orphan')
     
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
-    
+
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    # Métodos de verificação de permissões
+    def is_super_admin(self):
+        return self.user_role == 'super_admin'
+
+    def is_admin(self):
+        return self.user_role in ['admin', 'super_admin']
+
+    def is_premium(self):
+        return self.account_type in ['premium', 'enterprise']
+
+    def has_premium_feature(self, feature):
+        return self.premium_features.get(feature, False) if self.premium_features else False
+
+    def account_is_expired(self):
+        if self.account_expires_at:
+            return datetime.utcnow() > self.account_expires_at
+        return False
 
 # === SISTEMA DE FROTAS EMPRESARIAIS ===
 
@@ -1524,12 +1555,48 @@ def run_daily_alert_checks():
     
     return total_alerts
 
+# === DECORATORS DE PERMISSÃO ===
+
+def admin_required(f):
+    """Decorator para rotas que exigem permissão de admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Você precisa estar logado para acessar esta página.', 'error')
+            return redirect(url_for('login'))
+        if not current_user.is_admin():
+            flash('Você não tem permissão para acessar esta página.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def super_admin_required(f):
+    """Decorator para rotas que exigem permissão de super admin"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated:
+            flash('Você precisa estar logado para acessar esta página.', 'error')
+            return redirect(url_for('login'))
+        if not current_user.is_super_admin():
+            flash('Você não tem permissão para acessar esta página.', 'error')
+            return redirect(url_for('dashboard'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 # === ROTAS ===
 
 @app.route('/')
 def index():
     """Landing page do Rodo Stats"""
     if current_user.is_authenticated:
+        # Redirecionar baseado no tipo de usuário
+        if current_user.is_super_admin():
+            return redirect(url_for('admin_dashboard'))
+        fleet_membership = FleetMember.query.filter_by(
+            user_id=current_user.id, is_active=True
+        ).first()
+        if fleet_membership:
+            return redirect(url_for('fleet_dashboard'))
         return redirect(url_for('dashboard'))
     return render_template('index.html')
 
@@ -1553,28 +1620,54 @@ def test_login():
 def login():
     """Login do usuario"""
     if request.method == 'POST':
-        username = request.form['username']
+        # Aceitar tanto username quanto email
+        login_field = request.form.get('username') or request.form.get('email')
         password = request.form['password']
-        
-        print(f"[LOGIN] Tentativa de login: {username}")
-        
-        user = User.query.filter_by(username=username).first()
+
+        print(f"[LOGIN] Tentativa de login: {login_field}")
+
+        # Buscar por username ou email
+        user = User.query.filter(
+            (User.username == login_field) | (User.email == login_field)
+        ).first()
         
         if user and user.check_password(password):
-            print(f"[LOGIN] Credenciais válidas para {username}")
+            print(f"[LOGIN] Credenciais válidas para {login_field}")
             session.permanent = True
             login_user(user, remember=True)
             print(f"[LOGIN] Usuário logado: {current_user.is_authenticated}")
-            
+
             # Verificar se há convite pendente
             invite_token = request.args.get('invite_token')
             if invite_token:
                 return redirect(url_for('accept_fleet_invite', token=invite_token))
-            
+
+            # Redirecionamento inteligente baseado no tipo de usuário
             next_page = request.args.get('next')
-            return redirect(next_page) if next_page else redirect(url_for('dashboard'))
+            if next_page:
+                return redirect(next_page)
+
+            # 1. Super Admin → Dashboard Administrativo
+            if user.is_super_admin():
+                print(f"[LOGIN] Usuário {login_field} é super admin, redirecionando para admin_dashboard")
+                return redirect(url_for('admin_dashboard'))
+
+            # 2. Verificar se usuário pertence a uma frota
+            fleet_membership = FleetMember.query.filter_by(
+                user_id=user.id,
+                is_active=True
+            ).first()
+
+            if fleet_membership:
+                # Usuário de frota → redirecionar para dashboard empresarial
+                print(f"[LOGIN] Usuário {login_field} é membro de frota, redirecionando para fleet_dashboard")
+                return redirect(url_for('fleet_dashboard'))
+            else:
+                # 3. Usuário PF → redirecionar para dashboard individual
+                print(f"[LOGIN] Usuário {login_field} é PF, redirecionando para dashboard")
+                return redirect(url_for('dashboard'))
         else:
-            print(f"[LOGIN] Credenciais inválidas para {username}")
+            print(f"[LOGIN] Credenciais inválidas para {login_field}")
             flash('Usuario ou senha incorretos', 'error')
     
     return render_template('login.html')
@@ -1711,11 +1804,17 @@ def dashboard():
     """Dashboard principal"""
     print(f"[DASHBOARD] Usuário autenticado: {current_user.is_authenticated}")
     print(f"[DASHBOARD] ID do usuário: {current_user.get_id() if current_user.is_authenticated else 'None'}")
-    
+
+    # Verificar se usuário pertence a uma frota
+    fleet_membership = FleetMember.query.filter_by(
+        user_id=current_user.id,
+        is_active=True
+    ).first()
+
     # Processar filtros da URL
     selected_vehicle = request.args.get('vehicle_id', type=int)
     selected_days = request.args.get('days', type=int)
-    
+
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
     
     # Construir query base considerando filtros
@@ -1864,8 +1963,9 @@ def dashboard():
         fuel_distribution[fuel_type] = float(total_liters or 0)
     
     # Usar template original
-    return render_template('dashboard.html', 
+    return render_template('dashboard.html',
                          vehicles=vehicles,
+                         fleet_membership=fleet_membership,
                          total_vehicles=total_vehicles,
                          total_records=total_records,
                          recent_records=recent_records,
@@ -3552,23 +3652,21 @@ def create_demo_user():
         # Criar usuário demo
         demo_user = User(
             username='Demo Frotas',
-            email='demo@frotas.com',
-            password=generate_password_hash('demo123'),
-            is_verified=True
+            email='demo@frotas.com'
         )
+        demo_user.set_password('demo123')
         db.session.add(demo_user)
         db.session.flush()  # Para obter o ID
 
         # Criar frota demo
         demo_fleet = Fleet(
+            name='Transportes Demo',
             company_name='Transportes Demo Ltda',
-            contact_name='João da Silva',
             cnpj='12.345.678/0001-90',
             email='demo@frotas.com',
             phone='(11) 99999-9999',
             address='Rua Demo, 123 - São Paulo, SP',
-            subscription_plan='trial',
-            trial_ends_at=datetime.utcnow() + timedelta(days=30)
+            subscription_plan='trial'
         )
         db.session.add(demo_fleet)
         db.session.flush()
@@ -3577,16 +3675,15 @@ def create_demo_user():
         fleet_member = FleetMember(
             fleet_id=demo_fleet.id,
             user_id=demo_user.id,
-            role='owner',
-            invited_by_id=demo_user.id
+            role='owner'
         )
         db.session.add(fleet_member)
 
         # Criar alguns veículos demo
         vehicles_data = [
-            {'brand': 'Mercedes-Benz', 'model': 'Actros 2646', 'year': 2021, 'license_plate': 'ABC-1234', 'fuel_type': 'diesel', 'vehicle_type': 'truck'},
-            {'brand': 'Volvo', 'model': 'FH 460', 'year': 2020, 'license_plate': 'DEF-5678', 'fuel_type': 'diesel', 'vehicle_type': 'truck'},
-            {'brand': 'Scania', 'model': 'R 450', 'year': 2022, 'license_plate': 'GHI-9012', 'fuel_type': 'diesel', 'vehicle_type': 'truck'}
+            {'name': 'Caminhão 01', 'brand': 'Mercedes-Benz', 'model': 'Actros 2646', 'year': 2021, 'license_plate': 'ABC-1234', 'fuel_type': 'diesel', 'vehicle_type': 'truck', 'tank_capacity': 400},
+            {'name': 'Caminhão 02', 'brand': 'Volvo', 'model': 'FH 460', 'year': 2020, 'license_plate': 'DEF-5678', 'fuel_type': 'diesel', 'vehicle_type': 'truck', 'tank_capacity': 350},
+            {'name': 'Caminhão 03', 'brand': 'Scania', 'model': 'R 450', 'year': 2022, 'license_plate': 'GHI-9012', 'fuel_type': 'diesel', 'vehicle_type': 'truck', 'tank_capacity': 380}
         ]
 
         demo_vehicles = []
@@ -3650,8 +3747,6 @@ def create_demo_user():
                         liters=liters,
                         price_per_liter=price_per_liter,
                         total_cost=total_cost,
-                        kilometers=kilometers,
-                        consumption=km_per_liter,
                         fuel_type=vehicle.fuel_type,
                         gas_station=f'Posto Demo {randint(1, 5)}',
                         notes='Registro demo gerado automaticamente'
@@ -4707,10 +4802,13 @@ def create_tables():
         with app.app_context():
             db.create_all()
             print("Tabelas criadas com sucesso!")
-            
+
             # Migrar dados de OilChange para MaintenanceRecord se necessário
             migrate_oil_records_to_maintenance()
-            
+
+            # Migrar campos de admin se necessário
+            migrate_user_admin_fields()
+
     except Exception as e:
         print(f"Erro ao criar tabelas: {e}")
 
@@ -4761,6 +4859,44 @@ def migrate_oil_records_to_maintenance():
     except Exception as e:
         print(f"Erro na migração de dados de óleo: {e}")
         db.session.rollback()
+
+def migrate_user_admin_fields():
+    """Migra tabela de usuários para incluir campos de admin"""
+    try:
+        print("Verificando campos de admin na tabela users...")
+
+        # Lista de colunas para adicionar
+        columns_to_add = [
+            ("user_role", "VARCHAR(20) DEFAULT 'user'"),
+            ("account_type", "VARCHAR(20) DEFAULT 'free'"),
+            ("account_expires_at", "TIMESTAMP"),
+            ("premium_features", "JSON")
+        ]
+
+        for column_name, column_definition in columns_to_add:
+            try:
+                with db.engine.connect() as conn:
+                    # Usar transação individual para cada coluna
+                    trans = conn.begin()
+                    try:
+                        conn.execute(db.text(f"ALTER TABLE users ADD COLUMN {column_name} {column_definition}"))
+                        trans.commit()
+                        print(f"  + Coluna {column_name} adicionada")
+                    except Exception as e:
+                        trans.rollback()
+                        if "already exists" in str(e) or "duplicate column" in str(e).lower():
+                            print(f"  - {column_name} ja existe")
+                        else:
+                            print(f"  ! Erro ao adicionar {column_name}: {e}")
+            except Exception as e:
+                print(f"  ! Erro na conexao para {column_name}: {e}")
+
+        print("Migracao de colunas de admin concluida!")
+
+    except Exception as e:
+        print(f"Erro na migracao de campos de admin: {e}")
+        import traceback
+        traceback.print_exc()
 
 # === ENDPOINT DE RECONHECIMENTO DE VOZ ===
 
@@ -4883,12 +5019,334 @@ def process_fuel_record_from_voice(dados, user_id):
         db.session.add(fuel_record)
         db.session.commit()
         return True
-        
+
     except Exception as e:
         print(f"Erro ao salvar registro de voz: {e}")
         db.session.rollback()
         return False
 
+# === ROTAS ADMINISTRATIVAS (SUPER ADMIN) ===
+
+@app.route('/admin/dashboard')
+@login_required
+@super_admin_required
+def admin_dashboard():
+    """Dashboard principal do Super Admin"""
+    # Estatísticas gerais
+    total_users = User.query.count()
+    total_fleets = Fleet.query.count()
+    # Usuários PF = usuários que não são membros de frotas
+    total_pf_users = User.query.filter(
+        ~User.id.in_(
+            db.session.query(FleetMember.user_id).distinct()
+        )
+    ).count()
+
+    # Usuários por tipo de conta
+    free_users = User.query.filter_by(account_type='free').count()
+    premium_users = User.query.filter_by(account_type='premium').count()
+    enterprise_users = User.query.filter_by(account_type='enterprise').count()
+
+    # Usuários recentes (últimos 30 dias)
+    recent_users = User.query.filter(
+        User.created_at >= datetime.utcnow() - timedelta(days=30)
+    ).count()
+
+    # Frotas recentes
+    recent_fleets = Fleet.query.filter(
+        Fleet.created_at >= datetime.utcnow() - timedelta(days=30)
+    ).count()
+
+    stats = {
+        'total_users': total_users,
+        'total_fleets': total_fleets,
+        'total_pf_users': total_pf_users,
+        'free_users': free_users,
+        'premium_users': premium_users,
+        'enterprise_users': enterprise_users,
+        'recent_users': recent_users,
+        'recent_fleets': recent_fleets
+    }
+
+    return render_template('admin/dashboard.html', stats=stats)
+
+@app.route('/admin/users')
+@login_required
+@super_admin_required
+def admin_users():
+    """Gestão de usuários PF"""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    account_type = request.args.get('account_type', '')
+
+    # Query base - usuários PF (não membros de frotas)
+    query = User.query.filter(
+        ~User.id.in_(
+            db.session.query(FleetMember.user_id).distinct()
+        )
+    )
+
+    # Filtros
+    if search:
+        query = query.filter(
+            (User.username.ilike(f'%{search}%')) |
+            (User.email.ilike(f'%{search}%'))
+        )
+
+    if account_type:
+        query = query.filter(User.account_type == account_type)
+
+    # Paginação
+    users = query.order_by(User.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+
+    return render_template('admin/users.html',
+                         users=users,
+                         search=search,
+                         account_type=account_type)
+
+@app.route('/admin/fleets')
+@login_required
+@super_admin_required
+def admin_fleets():
+    """Gestão de frotas empresariais"""
+    page = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '')
+    subscription_plan = request.args.get('subscription_plan', '')
+
+    # Query base
+    query = Fleet.query
+
+    # Filtros
+    if search:
+        query = query.filter(
+            (Fleet.company_name.ilike(f'%{search}%')) |
+            (Fleet.email.ilike(f'%{search}%'))
+        )
+
+    if subscription_plan:
+        query = query.filter(Fleet.subscription_plan == subscription_plan)
+
+    # Paginação
+    fleets = query.order_by(Fleet.created_at.desc()).paginate(
+        page=page, per_page=20, error_out=False
+    )
+
+    return render_template('admin/fleets.html',
+                         fleets=fleets,
+                         search=search,
+                         subscription_plan=subscription_plan)
+
+@app.route('/admin/user/<int:user_id>/update_account', methods=['POST'])
+@login_required
+@super_admin_required
+def admin_update_user_account_original():
+    """Atualizar tipo de conta de usuário"""
+    user_id = request.form.get('user_id')
+    account_type = request.form.get('account_type')
+    expires_months = request.form.get('expires_months', type=int)
+
+    user = User.query.get_or_404(user_id)
+
+    # Atualizar tipo de conta
+    user.account_type = account_type
+
+    # Definir data de expiração se for premium/enterprise
+    if account_type in ['premium', 'enterprise'] and expires_months:
+        user.account_expires_at = datetime.utcnow() + timedelta(days=expires_months*30)
+    elif account_type == 'free':
+        user.account_expires_at = None
+
+    # Definir features premium
+    if account_type == 'premium':
+        user.premium_features = {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': False,
+            'priority_support': True,
+            'custom_branding': False
+        }
+    elif account_type == 'enterprise':
+        user.premium_features = {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': True,
+            'priority_support': True,
+            'custom_branding': True
+        }
+    else:  # free
+        user.premium_features = {
+            'unlimited_vehicles': False,
+            'advanced_reports': False,
+            'api_access': False,
+            'priority_support': False,
+            'custom_branding': False
+        }
+
+    db.session.commit()
+    flash(f'Conta de {user.username} atualizada para {account_type}!', 'success')
+
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/fleet/<int:fleet_id>/update_plan', methods=['POST'])
+@login_required
+@super_admin_required
+def admin_update_fleet_plan_original():
+    """Atualizar plano de frota"""
+    fleet_id = request.form.get('fleet_id')
+    subscription_plan = request.form.get('subscription_plan')
+
+    fleet = Fleet.query.get_or_404(fleet_id)
+    fleet.subscription_plan = subscription_plan
+
+    # Ajustar limites baseado no plano
+    if subscription_plan == 'trial':
+        fleet.max_vehicles = 5
+        fleet.max_users = 3
+    elif subscription_plan == 'small':
+        fleet.max_vehicles = 20
+        fleet.max_users = 10
+    elif subscription_plan == 'enterprise':
+        fleet.max_vehicles = 100
+        fleet.max_users = 50
+    elif subscription_plan == 'custom':
+        fleet.max_vehicles = 999
+        fleet.max_users = 999
+
+    db.session.commit()
+    flash(f'Plano da frota {fleet.company_name} atualizado para {subscription_plan}!', 'success')
+
+    return redirect(url_for('admin_fleets'))
+
+# Aliases para os endpoints admin (compatibilidade com templates)
+@app.route('/admin/update_user_account', methods=['POST'])
+@login_required
+@super_admin_required
+def admin_update_user_account():
+    """Atualizar tipo de conta de usuário"""
+    user_id = request.form.get('user_id')
+    account_type = request.form.get('account_type')
+    expires_months = request.form.get('expires_months', type=int)
+
+    user = User.query.get_or_404(user_id)
+
+    # Atualizar tipo de conta
+    user.account_type = account_type
+
+    # Definir data de expiração se for premium/enterprise
+    if account_type in ['premium', 'enterprise'] and expires_months:
+        user.account_expires_at = datetime.utcnow() + timedelta(days=expires_months*30)
+    elif account_type == 'free':
+        user.account_expires_at = None
+
+    # Definir features premium
+    if account_type == 'premium':
+        user.premium_features = {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': False,
+            'priority_support': True,
+            'custom_branding': False
+        }
+    elif account_type == 'enterprise':
+        user.premium_features = {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': True,
+            'priority_support': True,
+            'custom_branding': True
+        }
+    else:  # free
+        user.premium_features = {
+            'unlimited_vehicles': False,
+            'advanced_reports': False,
+            'api_access': False,
+            'priority_support': False,
+            'custom_branding': False
+        }
+
+    db.session.commit()
+    flash(f'Conta de {user.username} atualizada para {account_type}!', 'success')
+
+    return redirect(url_for('admin_users'))
+
+@app.route('/admin/update_fleet_plan', methods=['POST'])
+@login_required
+@super_admin_required
+def admin_update_fleet_plan():
+    """Atualizar plano de frota"""
+    fleet_id = request.form.get('fleet_id')
+    subscription_plan = request.form.get('subscription_plan')
+
+    fleet = Fleet.query.get_or_404(fleet_id)
+    fleet.subscription_plan = subscription_plan
+
+    # Ajustar limites baseado no plano
+    if subscription_plan == 'trial':
+        fleet.max_vehicles = 5
+        fleet.max_users = 3
+    elif subscription_plan == 'small':
+        fleet.max_vehicles = 20
+        fleet.max_users = 10
+    elif subscription_plan == 'enterprise':
+        fleet.max_vehicles = 100
+        fleet.max_users = 50
+    elif subscription_plan == 'custom':
+        fleet.max_vehicles = 999
+        fleet.max_users = 999
+
+    db.session.commit()
+    flash(f'Plano da frota {fleet.company_name} atualizado para {subscription_plan}!', 'success')
+
+    return redirect(url_for('admin_fleets'))
+
+@app.route('/create_super_admin')
+def create_super_admin():
+    """Criar usuário super admin de demonstração"""
+    try:
+        # Verificar se já existe
+        existing_admin = User.query.filter_by(email='admin@rodostats.com').first()
+        if existing_admin:
+            return jsonify({
+                'success': True,
+                'message': 'Super admin já existe',
+                'email': 'admin@rodostats.com',
+                'password': 'admin123'
+            })
+
+        # Criar super admin
+        super_admin = User(
+            username='SuperAdmin',
+            email='admin@rodostats.com',
+            user_role='super_admin',
+            account_type='enterprise'
+        )
+        super_admin.set_password('admin123')
+
+        db.session.add(super_admin)
+        db.session.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Super admin criado com sucesso!',
+            'credentials': {
+                'email': 'admin@rodostats.com',
+                'password': 'admin123'
+            },
+            'permissions': {
+                'role': 'super_admin',
+                'account_type': 'enterprise',
+                'access': 'Dashboard administrativo completo'
+            }
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'Erro ao criar super admin: {str(e)}'
+        })
 
 # Para desenvolvimento local
 if __name__ == '__main__':
