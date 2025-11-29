@@ -94,16 +94,26 @@
             <div class="card-footer bg-transparent">
                 <div class="row g-2">
                     <div class="col-6">
-                        <a href="{{ url_for('dashboard', vehicle_id=vehicle.id) }}" 
+                        <a href="{{ url_for('dashboard', vehicle_id=vehicle.id) }}"
                            class="btn btn-outline-primary btn-sm w-100">
                             <i class="fas fa-chart-bar me-1"></i>Ver Dados
                         </a>
                     </div>
                     <div class="col-6">
-                        <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}" 
+                        <a href="{{ url_for('add_fuel_record', vehicle_id=vehicle.id) }}"
                            class="btn btn-success btn-sm w-100">
                             <i class="fas fa-plus me-1"></i>Abastecer
                         </a>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-12">
+                        <button type="button"
+                                class="btn btn-outline-danger btn-sm w-100 btn-delete-vehicle"
+                                data-vehicle-id="{{ vehicle.id }}"
+                                data-vehicle-name="{{ vehicle.name }}">
+                            <i class="fas fa-trash me-1"></i>Excluir Veículo
+                        </button>
                     </div>
                 </div>
                 <small class="text-info fw-semibold d-block mt-2 text-center">
@@ -205,18 +215,42 @@
 // Animação das cards de veículos
 document.addEventListener('DOMContentLoaded', function() {
     const vehicleCards = document.querySelectorAll('.vehicle-card');
-    
+
     vehicleCards.forEach((card, index) => {
         card.style.opacity = '0';
         card.style.transform = 'translateY(20px)';
-        
+
         setTimeout(() => {
             card.style.transition = 'all 0.5s ease';
             card.style.opacity = '1';
             card.style.transform = 'translateY(0)';
         }, index * 100);
     });
+
+    // Event listeners para botões de exclusão
+    const deleteButtons = document.querySelectorAll('.btn-delete-vehicle');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const vehicleId = this.getAttribute('data-vehicle-id');
+            const vehicleName = this.getAttribute('data-vehicle-name');
+            confirmDelete(vehicleId, vehicleName);
+        });
+    });
 });
+
+// Função para confirmar exclusão
+function confirmDelete(vehicleId, vehicleName) {
+    if (confirm(`Tem certeza que deseja excluir o veículo "${vehicleName}"?\n\nEsta ação não pode ser desfeita e todos os registros de abastecimento serão mantidos para histórico.`)) {
+        // Criar form para submissão POST
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/vehicle/${vehicleId}/delete`;
+
+        // Adicionar ao body e submeter
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
 </script>
 
 <style>

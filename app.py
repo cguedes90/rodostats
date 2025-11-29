@@ -2118,12 +2118,31 @@ def vehicle_detail(vehicle_id):
                     else:
                         oil_alert = f"Troca de óleo por tempo próxima! {next_date.strftime('%d/%m/%Y')}"
 
-    return render_template('vehicle_detail.html', 
-                         vehicle=vehicle, 
-                         records=records, 
+    return render_template('vehicle_detail.html',
+                         vehicle=vehicle,
+                         records=records,
                          efficiency=efficiency,
                          recent_expense=recent_expense,
                          oil_alert=oil_alert)
+
+@app.route('/vehicle/<int:vehicle_id>/delete', methods=['POST'])
+@login_required
+def delete_vehicle(vehicle_id):
+    """Excluir veículo (soft delete)"""
+    vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
+
+    try:
+        # Soft delete - apenas marca como inativo
+        vehicle.is_active = False
+        db.session.commit()
+
+        flash(f'Veículo "{vehicle.name}" excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao excluir veículo. Tente novamente.', 'error')
+        print(f"Erro ao excluir veículo: {e}")
+
+    return redirect(url_for('vehicles'))
 
 @app.route('/add_fuel', methods=['GET', 'POST'])
 @login_required
@@ -5300,6 +5319,216 @@ def admin_update_fleet_plan():
     flash(f'Plano da frota {fleet.company_name} atualizado para {subscription_plan}!', 'success')
 
     return redirect(url_for('admin_fleets'))
+
+@app.route('/admin/add_client', methods=['POST'])
+@login_required
+@super_admin_required
+def admin_add_client():
+    """Criar novo cliente (PF ou Frota) via Super Admin"""
+    try:
+        # Dados do formulário
+        email = request.form.get('email', '').strip().lower()
+        name = request.form.get('name', '').strip()
+        phone = request.form.get('phone', '').strip()
+        client_type = request.form.get('client_type')
+        account_plan = request.form.get('account_plan')
+        cnpj = request.form.get('cnpj', '').strip()
+
+        # Validações básicas
+        if not email or not name or not client_type or not account_plan:
+            flash('Todos os campos obrigatórios devem ser preenchidos!', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        # Validar formato de email
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, email):
+            flash('Formato de email inválido!', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        # Verificar se email já existe (duplicidade)
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            flash(f'Email {email} já está cadastrado no sistema!', 'error')
+            return redirect(url_for('admin_dashboard'))
+
+        # Se for frota, verificar se existe fleet com mesmo email
+        if client_type == 'frota':
+            existing_fleet = Fleet.query.filter_by(email=email).first()
+            if existing_fleet:
+                flash(f'Email {email} já está cadastrado como frota!', 'error')
+                return redirect(url_for('admin_dashboard'))
+
+        # Gerar senha temporária
+        import secrets
+        import string
+        temp_password = ''.join(secrets.choice(string.ascii_letters + string.digits) for _ in range(8))
+
+        if client_type == 'pf':
+            # Criar usuário PF
+            new_user = User(
+                username=name,
+                email=email,
+                password_hash=generate_password_hash(temp_password),
+                user_role='user',
+                account_type=account_plan,
+                premium_features=get_premium_features(account_plan),
+                is_active=True
+            )
+
+            # Definir data de expiração se for premium/enterprise
+            if account_plan in ['premium', 'enterprise']:
+                new_user.account_expires_at = datetime.utcnow() + timedelta(days=365)  # 1 ano
+
+            db.session.add(new_user)
+            db.session.commit()
+
+            # Enviar email de boas-vindas
+            send_welcome_email(email, name, temp_password, 'pf', account_plan)
+
+            flash(f'Usuário PF {name} criado com sucesso! Email enviado para {email}', 'success')
+
+        elif client_type == 'frota':
+            # Definir limites baseado no plano
+            if account_plan == 'free':
+                max_vehicles, max_users = 5, 3
+                subscription_plan = 'trial'
+            elif account_plan == 'premium':
+                max_vehicles, max_users = 20, 10
+                subscription_plan = 'small'
+            else:  # enterprise
+                max_vehicles, max_users = 100, 50
+                subscription_plan = 'enterprise'
+
+            # Criar frota
+            new_fleet = Fleet(
+                name=name,  # Campo obrigatório
+                company_name=name,
+                email=email,
+                phone=phone,
+                cnpj=cnpj,
+                subscription_plan=subscription_plan,
+                max_vehicles=max_vehicles,
+                max_users=max_users,
+                is_active=True
+            )
+
+            db.session.add(new_fleet)
+            db.session.flush()  # Para obter o fleet.id
+
+            # Criar usuário administrador da frota
+            fleet_admin = User(
+                username=f"{name} - Admin",
+                email=email,
+                password_hash=generate_password_hash(temp_password),
+                user_role='admin',
+                account_type=account_plan,
+                premium_features=get_premium_features(account_plan),
+                is_active=True
+            )
+
+            if account_plan in ['premium', 'enterprise']:
+                fleet_admin.account_expires_at = datetime.utcnow() + timedelta(days=365)
+
+            db.session.add(fleet_admin)
+            db.session.flush()  # Para obter fleet_admin.id
+
+            # Criar associação de membro da frota
+            fleet_member = FleetMember(
+                fleet_id=new_fleet.id,
+                user_id=fleet_admin.id,
+                role='owner'  # Admin principal da frota
+            )
+
+            db.session.add(fleet_member)
+            db.session.commit()
+
+            # Enviar email de boas-vindas
+            send_welcome_email(email, name, temp_password, 'frota', account_plan)
+
+            flash(f'Frota {name} criada com sucesso! Email enviado para {email}', 'success')
+
+        return redirect(url_for('admin_dashboard'))
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao criar cliente: {e}")
+        import traceback
+        traceback.print_exc()
+        flash('Erro interno ao criar cliente. Tente novamente.', 'error')
+        return redirect(url_for('admin_dashboard'))
+
+def get_premium_features(account_plan):
+    """Retorna features premium baseado no plano"""
+    if account_plan == 'premium':
+        return {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': False,
+            'priority_support': True,
+            'custom_branding': False
+        }
+    elif account_plan == 'enterprise':
+        return {
+            'unlimited_vehicles': True,
+            'advanced_reports': True,
+            'api_access': True,
+            'priority_support': True,
+            'custom_branding': True
+        }
+    else:  # free
+        return {
+            'unlimited_vehicles': False,
+            'advanced_reports': False,
+            'api_access': False,
+            'priority_support': False,
+            'custom_branding': False
+        }
+
+def send_welcome_email(email, name, password, client_type, account_plan):
+    """Enviar email de boas-vindas para novo cliente"""
+    try:
+        # Por enquanto, apenas simular o envio (log)
+        client_type_text = "Pessoa Física" if client_type == 'pf' else "Empresa"
+        plan_text = {
+            'free': 'Gratuito',
+            'premium': 'Premium',
+            'enterprise': 'Enterprise'
+        }.get(account_plan, account_plan)
+
+        print(f"""
+=== EMAIL DE BOAS-VINDAS ENVIADO ===
+Para: {email}
+Nome: {name}
+Tipo: {client_type_text}
+Plano: {plan_text}
+Senha Temporária: {password}
+
+Bem-vindo(a) ao Rodo Stats!
+
+Seus dados de acesso:
+- Email: {email}
+- Senha Temporária: {password}
+- Tipo de Conta: {client_type_text}
+- Plano: {plan_text}
+
+Acesse: https://rodostats.vercel.app/login
+
+Após o primeiro login, recomendamos alterar sua senha.
+
+Atenciosamente,
+Equipe Rodo Stats
+====================================
+        """)
+
+        # TODO: Implementar envio real de email com Flask-Mail
+        # mail.send(message)
+
+        return True
+
+    except Exception as e:
+        print(f"Erro ao enviar email de boas-vindas: {e}")
+        return False
 
 @app.route('/create_super_admin')
 def create_super_admin():
