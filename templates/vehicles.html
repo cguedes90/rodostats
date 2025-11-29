@@ -107,12 +107,18 @@
                     </div>
                 </div>
                 <div class="row g-2 mt-1">
-                    <div class="col-12">
+                    <div class="col-6">
+                        <a href="{{ url_for('edit_vehicle', vehicle_id=vehicle.id) }}"
+                           class="btn btn-outline-info btn-sm w-100">
+                            <i class="fas fa-edit me-1"></i>Editar
+                        </a>
+                    </div>
+                    <div class="col-6">
                         <button type="button"
                                 class="btn btn-outline-danger btn-sm w-100 btn-delete-vehicle"
                                 data-vehicle-id="{{ vehicle.id }}"
                                 data-vehicle-name="{{ vehicle.name }}">
-                            <i class="fas fa-trash me-1"></i>Excluir Veículo
+                            <i class="fas fa-trash me-1"></i>Excluir
                         </button>
                     </div>
                 </div>
@@ -238,18 +244,36 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Função para confirmar exclusão
+// Função para confirmar exclusão com SweetAlert2
 function confirmDelete(vehicleId, vehicleName) {
-    if (confirm(`Tem certeza que deseja excluir o veículo "${vehicleName}"?\n\nEsta ação não pode ser desfeita e todos os registros de abastecimento serão mantidos para histórico.`)) {
-        // Criar form para submissão POST
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.action = `/vehicle/${vehicleId}/delete`;
+    Swal.fire({
+        title: 'Excluir Veículo?',
+        html: `Tem certeza que deseja excluir <strong>"${vehicleName}"</strong>?<br><br>
+               <small class="text-muted">Os registros de abastecimento serão mantidos para histórico.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-trash me-2"></i>Sim, excluir!',
+        cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+        reverseButtons: true,
+        customClass: {
+            popup: 'dark-swal',
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-secondary'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Criar form para submissão POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/vehicle/${vehicleId}/delete`;
 
-        // Adicionar ao body e submeter
-        document.body.appendChild(form);
-        form.submit();
-    }
+            // Adicionar ao body e submeter
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
 }
 </script>
 

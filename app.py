@@ -2144,6 +2144,54 @@ def delete_vehicle(vehicle_id):
 
     return redirect(url_for('vehicles'))
 
+@app.route('/vehicle/<int:vehicle_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_vehicle(vehicle_id):
+    """Editar veículo existente"""
+    vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
+
+    if request.method == 'POST':
+        # Obter placa do formulário
+        license_plate = request.form.get('license_plate', '').strip()
+        if not license_plate:
+            license_plate = None
+        else:
+            license_plate = license_plate.upper()
+
+        # Obter cor do formulário
+        color = request.form.get('color', '').strip()
+        if not color:
+            color = None
+
+        # Obter capacidade do tanque
+        tank_capacity = request.form.get('tank_capacity', '').strip()
+        if not tank_capacity:
+            tank_capacity = 50.0
+        else:
+            tank_capacity = float(tank_capacity)
+
+        try:
+            # Atualizar dados do veículo
+            vehicle.name = request.form['name']
+            vehicle.brand = request.form['brand']
+            vehicle.model = request.form['model']
+            vehicle.year = int(request.form['year'])
+            vehicle.license_plate = license_plate
+            vehicle.color = color
+            vehicle.fuel_type = request.form['fuel_type']
+            vehicle.tank_capacity = tank_capacity
+
+            db.session.commit()
+
+            flash(f'Veículo "{vehicle.name}" atualizado com sucesso!', 'success')
+            return redirect(url_for('vehicles'))
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao atualizar veículo. Tente novamente.', 'error')
+            print(f"Erro ao atualizar veículo: {e}")
+
+    return render_template('edit_vehicle.html', vehicle=vehicle)
+
 @app.route('/add_fuel', methods=['GET', 'POST'])
 @login_required
 def add_fuel():
@@ -2236,6 +2284,69 @@ def add_fuel_record(vehicle_id):
     # Para GET request, passar data atual para o template
     current_date = datetime.now().strftime('%Y-%m-%d')
     return render_template('add_fuel_record.html', vehicle=vehicle, current_date=current_date)
+
+@app.route('/fuel_record/<int:record_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_fuel_record(record_id):
+    """Editar registro de abastecimento"""
+    record = FuelRecord.query.join(Vehicle).filter(
+        FuelRecord.id == record_id,
+        Vehicle.user_id == current_user.id
+    ).first_or_404()
+
+    vehicle = record.vehicle
+
+    if request.method == 'POST':
+        try:
+            # Atualizar dados do registro
+            record.date = datetime.strptime(request.form['date'], '%Y-%m-%d').date()
+            record.odometer = float(request.form['odometer'])
+            record.liters = float(request.form['liters'])
+            record.price_per_liter = float(request.form['price_per_liter'])
+            record.total_cost = float(request.form['total_cost'])
+            record.gas_station = request.form.get('gas_station', '')
+            record.fuel_type = request.form.get('fuel_type', vehicle.fuel_type)
+            record.notes = request.form.get('notes', '')
+
+            db.session.commit()
+
+            flash('Abastecimento atualizado com sucesso!', 'success')
+            return redirect(url_for('vehicle_detail', vehicle_id=vehicle.id))
+        except Exception as e:
+            db.session.rollback()
+            flash('Erro ao atualizar abastecimento. Tente novamente.', 'error')
+            print(f"Erro ao atualizar fuel_record: {e}")
+
+    return render_template('edit_fuel_record.html', record=record, vehicle=vehicle)
+
+@app.route('/fuel_record/<int:record_id>/delete', methods=['POST'])
+@login_required
+def delete_fuel_record(record_id):
+    """Excluir registro de abastecimento"""
+    record = FuelRecord.query.join(Vehicle).filter(
+        FuelRecord.id == record_id,
+        Vehicle.user_id == current_user.id
+    ).first_or_404()
+
+    vehicle_id = record.vehicle_id
+
+    try:
+        # Excluir imagem do recibo se existir
+        if record.receipt_image:
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], record.receipt_image)
+            if os.path.exists(file_path):
+                os.remove(file_path)
+
+        db.session.delete(record)
+        db.session.commit()
+
+        flash('Abastecimento excluído com sucesso!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao excluir abastecimento. Tente novamente.', 'error')
+        print(f"Erro ao excluir fuel_record: {e}")
+
+    return redirect(url_for('vehicle_detail', vehicle_id=vehicle_id))
 
 @app.route('/analytics')
 @login_required

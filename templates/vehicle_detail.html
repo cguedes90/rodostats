@@ -88,6 +88,7 @@
                                     <th>Preço/L</th>
                                     <th>Total</th>
                                     <th>Consumo</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -104,6 +105,22 @@
                                         {% else %}
                                             -
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="{{ url_for('edit_fuel_record', record_id=record.id) }}"
+                                               class="btn btn-outline-info"
+                                               title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <button type="button"
+                                                    class="btn btn-outline-danger btn-delete-fuel"
+                                                    data-record-id="{{ record.id }}"
+                                                    data-record-date="{{ record.date.strftime('%d/%m/%Y') }}"
+                                                    title="Excluir">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -200,5 +217,49 @@ setTimeout(function() {
         console.error('Erro ao criar gráficos:', error);
     }
 }, 2000);
+
+// Event listeners para botões de exclusão de abastecimentos
+document.addEventListener('DOMContentLoaded', function() {
+    const deleteButtons = document.querySelectorAll('.btn-delete-fuel');
+    deleteButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const recordId = this.getAttribute('data-record-id');
+            const recordDate = this.getAttribute('data-record-date');
+            confirmDeleteFuel(recordId, recordDate);
+        });
+    });
+});
+
+// Função para confirmar exclusão de abastecimento com SweetAlert2
+function confirmDeleteFuel(recordId, recordDate) {
+    Swal.fire({
+        title: 'Excluir Abastecimento?',
+        html: `Tem certeza que deseja excluir o abastecimento de <strong>${recordDate}</strong>?<br><br>
+               <small class="text-muted">Esta ação não pode ser desfeita.</small>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-trash me-2"></i>Sim, excluir!',
+        cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+        reverseButtons: true,
+        customClass: {
+            popup: 'dark-swal',
+            confirmButton: 'btn btn-danger',
+            cancelButton: 'btn btn-secondary'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Criar form para submissão POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/fuel_record/${recordId}/delete`;
+
+            // Adicionar ao body e submeter
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+}
 </script>
 {% endblock %}

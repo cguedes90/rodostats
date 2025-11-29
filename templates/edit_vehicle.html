@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Veículo - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <!-- Mensagens Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                        <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <div class="card-header text-center">
+                <i class="fas fa-edit fa-2x mb-2"></i>
+                <h4>Editar Veículo</h4>
+                <p class="text-muted mb-0">Atualize as informações do seu veículo</p>
+            </div>
+            <div class="card-body">
+                <form method="POST" id="vehicleForm">
+                    <div class="floating-label mb-3">
+                        <input type="text" class="form-control" id="name" name="name"
+                               value="{{ vehicle.name }}"
+                               placeholder="Ex: Meu Corolla, Civic do João..." required>
+                        <label for="name">Nome do Veículo *</label>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="brand" name="brand"
+                                       value="{{ vehicle.brand }}"
+                                       placeholder="Ex: Toyota" required>
+                                <label for="brand">Marca *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="model" name="model"
+                                       value="{{ vehicle.model }}"
+                                       placeholder="Ex: Corolla" required>
+                                <label for="model">Modelo *</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="year" name="year"
+                                       value="{{ vehicle.year }}"
+                                       min="1980" max="2030" placeholder="2023" required>
+                                <label for="year">Ano *</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="text" class="form-control" id="license_plate" name="license_plate"
+                                       value="{{ vehicle.license_plate or '' }}"
+                                       placeholder="ABC-1234" maxlength="8" style="text-transform: uppercase;">
+                                <label for="license_plate">Placa</label>
+                                <div class="form-text">Formato: ABC-1234 ou ABC1D23 (opcional)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="color" class="form-label">Cor</label>
+                        <select class="form-select" id="color" name="color">
+                            <option value="">Selecione a cor (opcional)</option>
+                            <option value="Branco" {% if vehicle.color == 'Branco' %}selected{% endif %}>Branco</option>
+                            <option value="Preto" {% if vehicle.color == 'Preto' %}selected{% endif %}>Preto</option>
+                            <option value="Prata" {% if vehicle.color == 'Prata' %}selected{% endif %}>Prata</option>
+                            <option value="Cinza" {% if vehicle.color == 'Cinza' %}selected{% endif %}>Cinza</option>
+                            <option value="Vermelho" {% if vehicle.color == 'Vermelho' %}selected{% endif %}>Vermelho</option>
+                            <option value="Azul" {% if vehicle.color == 'Azul' %}selected{% endif %}>Azul</option>
+                            <option value="Verde" {% if vehicle.color == 'Verde' %}selected{% endif %}>Verde</option>
+                            <option value="Amarelo" {% if vehicle.color == 'Amarelo' %}selected{% endif %}>Amarelo</option>
+                            <option value="Marrom" {% if vehicle.color == 'Marrom' %}selected{% endif %}>Marrom</option>
+                            <option value="Bege" {% if vehicle.color == 'Bege' %}selected{% endif %}>Bege</option>
+                            <option value="Dourado" {% if vehicle.color == 'Dourado' %}selected{% endif %}>Dourado</option>
+                            <option value="Outro" {% if vehicle.color == 'Outro' %}selected{% endif %}>Outro</option>
+                        </select>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="fuel_type" class="form-label">Tipo de Combustível *</label>
+                                <select class="form-select" id="fuel_type" name="fuel_type" required>
+                                    <option value="">Selecione o combustível</option>
+                                    <option value="gasoline" {% if vehicle.fuel_type == 'gasoline' %}selected{% endif %}>Gasolina</option>
+                                    <option value="ethanol" {% if vehicle.fuel_type == 'ethanol' %}selected{% endif %}>Etanol</option>
+                                    <option value="diesel" {% if vehicle.fuel_type == 'diesel' %}selected{% endif %}>Diesel</option>
+                                    <option value="flex" {% if vehicle.fuel_type == 'flex' %}selected{% endif %}>Flex (Gasolina/Etanol)</option>
+                                    <option value="natural_gas" {% if vehicle.fuel_type == 'natural_gas' %}selected{% endif %}>GNV</option>
+                                    <option value="electric" {% if vehicle.fuel_type == 'electric' %}selected{% endif %}>Elétrico</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="floating-label mb-3">
+                                <input type="number" class="form-control" id="tank_capacity" name="tank_capacity"
+                                       value="{{ vehicle.tank_capacity }}"
+                                       placeholder="Ex: 50" min="1" max="200" step="0.1">
+                                <label for="tank_capacity">Capacidade do Tanque (L)</label>
+                                <div class="form-text">Opcional - pode ser preenchida depois</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Preview do veículo -->
+                    <div class="card glass-effect mb-3">
+                        <div class="card-body">
+                            <h6 class="gradient-text mb-3">
+                                <i class="fas fa-eye me-2"></i>Preview das Alterações
+                            </h6>
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-car fa-2x text-primary me-3"></i>
+                                <div>
+                                    <h6 class="mb-1" id="previewTitle">{{ vehicle.name }}</h6>
+                                    <small class="text-muted">
+                                        <span id="previewPlate">{{ vehicle.license_plate or '-' }}</span> •
+                                        <span id="previewColor">{{ vehicle.color or '-' }}</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>Salvar Alterações
+                        </button>
+                        <a href="{{ url_for('vehicles') }}" class="btn btn-outline-light">
+                            <i class="fas fa-arrow-left me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Info sobre edição -->
+        <div class="card mt-4">
+            <div class="card-body">
+                <h6 class="gradient-text mb-3">
+                    <i class="fas fa-info-circle me-2"></i>Informações Importantes
+                </h6>
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2">
+                        <i class="fas fa-check text-success me-2"></i>
+                        <span class="text-light">Todas as alterações são salvas imediatamente</span>
+                    </li>
+                    <li class="mb-2">
+                        <i class="fas fa-database text-info me-2"></i>
+                        <span class="text-light">Seus registros de abastecimento serão mantidos</span>
+                    </li>
+                    <li>
+                        <i class="fas fa-shield-alt text-warning me-2"></i>
+                        <span class="text-light">Apenas você pode editar este veículo</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Atualizar preview do veículo em tempo real
+function updatePreview() {
+    const name = document.getElementById('name').value;
+    const brand = document.getElementById('brand').value;
+    const model = document.getElementById('model').value;
+    const year = document.getElementById('year').value;
+    const plate = document.getElementById('license_plate').value;
+    const color = document.getElementById('color').value;
+
+    const title = name || `${brand} ${model} ${year}`.trim() || 'Seu Veículo';
+    const plateText = plate || '-';
+    const colorText = color || '-';
+
+    document.getElementById('previewTitle').textContent = title;
+    document.getElementById('previewPlate').textContent = plateText;
+    document.getElementById('previewColor').textContent = colorText;
+}
+
+// Event listeners para atualizar preview
+['name', 'brand', 'model', 'year', 'license_plate', 'color'].forEach(id => {
+    document.getElementById(id).addEventListener('input', updatePreview);
+    document.getElementById(id).addEventListener('change', updatePreview);
+});
+
+// Validação de placa
+function validateLicensePlate(plate) {
+    const cleanPlate = plate.replace(/[-\s]/g, '').toUpperCase();
+    const oldFormat = /^[A-Z]{3}\d{4}$/.test(cleanPlate);
+    const mercosulFormat = /^[A-Z]{3}\d[A-Z]\d{2}$/.test(cleanPlate);
+    return oldFormat || mercosulFormat;
+}
+
+// Formatação automática da placa
+document.getElementById('license_plate').addEventListener('input', function() {
+    let value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+    if (value.length >= 4 && /^[A-Z]{3}\d/.test(value)) {
+        if (value.length <= 7) {
+            value = value.substring(0, 3) + '-' + value.substring(3);
+        }
+    }
+
+    this.value = value;
+
+    if (value.length >= 7) {
+        const isValid = validateLicensePlate(value);
+        if (isValid) {
+            this.classList.remove('is-invalid');
+            this.classList.add('is-valid');
+        } else {
+            this.classList.remove('is-valid');
+            this.classList.add('is-invalid');
+        }
+    } else {
+        this.classList.remove('is-valid', 'is-invalid');
+    }
+
+    updatePreview();
+});
+
+// Validação do formulário
+document.getElementById('vehicleForm').addEventListener('submit', function(e) {
+    const plate = document.getElementById('license_plate').value;
+    if (plate && !validateLicensePlate(plate)) {
+        e.preventDefault();
+        alert('Formato de placa inválido! Use ABC-1234 ou ABC1D23');
+        return false;
+    }
+
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}

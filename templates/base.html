@@ -29,7 +29,11 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
     <!-- Custom CSS -->
     <style>
         :root {
@@ -778,6 +782,26 @@
         .gradient-card .card-header {
             background: rgba(255, 255, 255, 0.1);
             border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* SweetAlert2 Dark Theme Custom */
+        .dark-swal {
+            background: #2d2d2d !important;
+            color: #e0e0e0 !important;
+            border: 1px solid #404040 !important;
+        }
+
+        .dark-swal .swal2-title {
+            color: #e0e0e0 !important;
+        }
+
+        .dark-swal .swal2-html-container {
+            color: #e0e0e0 !important;
+        }
+
+        .swal2-icon.swal2-warning {
+            border-color: #ffc107 !important;
+            color: #ffc107 !important;
         }
     </style>
     

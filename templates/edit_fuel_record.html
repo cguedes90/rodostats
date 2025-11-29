@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Abastecimento - FuelTracker Pro{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <!-- Mensagens Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            <i class="fas fa-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> Editar Abastecimento - {{ vehicle.name }}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" id="editFuelForm">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="date" class="form-label">Data</label>
+                                    <input type="date" class="form-control" id="date" name="date" required
+                                           value="{{ record.date.strftime('%Y-%m-%d') }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="odometer" class="form-label">Odômetro (km)</label>
+                                    <input type="number" step="0.1" class="form-control" id="odometer" name="odometer" required
+                                           value="{{ record.odometer }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="liters" class="form-label">Litros</label>
+                                    <input type="number" step="0.01" class="form-control" id="liters" name="liters" required
+                                           value="{{ record.liters }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="price_per_liter" class="form-label">Preço por Litro (R$)</label>
+                                    <input type="number" step="0.001" class="form-control" id="price_per_liter" name="price_per_liter" required
+                                           value="{{ '%.3f'|format(record.price_per_liter) }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="total_cost" class="form-label">Total (R$)</label>
+                                    <input type="number" step="0.01" class="form-control" id="total_cost" name="total_cost" required
+                                           value="{{ '%.2f'|format(record.total_cost) }}">
+                                    <small class="form-text text-muted">
+                                        <i class="fas fa-calculator"></i> Preencha 2 dos 3 campos e o terceiro será calculado automaticamente
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="fuel_type" class="form-label">Tipo de Combustível</label>
+                                    <select class="form-control" id="fuel_type" name="fuel_type">
+                                        <option value="gasoline" {% if record.fuel_type == 'gasoline' %}selected{% endif %}>Gasolina</option>
+                                        <option value="ethanol" {% if record.fuel_type == 'ethanol' %}selected{% endif %}>Etanol</option>
+                                        <option value="diesel" {% if record.fuel_type == 'diesel' %}selected{% endif %}>Diesel</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="gas_station" class="form-label">Posto de Combustível</label>
+                            <input type="text" class="form-control" id="gas_station" name="gas_station"
+                                   value="{{ record.gas_station or '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Observações</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ record.notes or '' }}</textarea>
+                        </div>
+
+                        {% if record.receipt_image %}
+                        <div class="mb-3">
+                            <label class="form-label">Imagem do Cupom Fiscal</label>
+                            <div class="card">
+                                <div class="card-body">
+                                    <img src="{{ url_for('static', filename='uploads/' + record.receipt_image) }}"
+                                         alt="Recibo"
+                                         class="img-thumbnail"
+                                         style="max-width: 300px; max-height: 300px;">
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('vehicle_detail', vehicle_id=vehicle.id) }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Voltar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Info sobre edição -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="gradient-text mb-3">
+                        <i class="fas fa-info-circle me-2"></i>Informações
+                    </h6>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2">
+                            <i class="fas fa-check text-success me-2"></i>
+                            <span class="text-light">As alterações serão salvas imediatamente</span>
+                        </li>
+                        <li class="mb-2">
+                            <i class="fas fa-chart-line text-info me-2"></i>
+                            <span class="text-light">Estatísticas de consumo serão recalculadas automaticamente</span>
+                        </li>
+                        <li>
+                            <i class="fas fa-image text-warning me-2"></i>
+                            <span class="text-light">A imagem do cupom fiscal não pode ser alterada, apenas visualizada</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Sistema inteligente de cálculo automático
+let calculateTimeout;
+
+function debouncedCalculate() {
+    clearTimeout(calculateTimeout);
+    calculateTimeout = setTimeout(smartCalculate, 300);
+}
+
+document.getElementById('liters').addEventListener('input', debouncedCalculate);
+document.getElementById('price_per_liter').addEventListener('input', debouncedCalculate);
+document.getElementById('total_cost').addEventListener('input', debouncedCalculate);
+
+function smartCalculate() {
+    const litersRaw = document.getElementById('liters').value;
+    const priceRaw = document.getElementById('price_per_liter').value;
+    const totalRaw = document.getElementById('total_cost').value;
+
+    const liters = parseFloat(litersRaw.replace(',', '.')) || 0;
+    const pricePerLiter = parseFloat(priceRaw.replace(',', '.')) || 0;
+    const totalCost = parseFloat(totalRaw.replace(',', '.')) || 0;
+
+    const filledFields = [liters > 0, pricePerLiter > 0, totalCost > 0].filter(Boolean).length;
+
+    if (filledFields === 2) {
+        // Temos Litros + Preço/Litro → Calcular Total
+        if (liters > 0 && pricePerLiter > 0 && totalCost === 0) {
+            const calculatedTotal = liters * pricePerLiter;
+            document.getElementById('total_cost').value = calculatedTotal.toFixed(2);
+        }
+        // Temos Total + Preço/Litro → Calcular Litros
+        else if (totalCost > 0 && pricePerLiter > 0 && liters === 0) {
+            const calculatedLiters = totalCost / pricePerLiter;
+            document.getElementById('liters').value = calculatedLiters.toFixed(2);
+        }
+        // Temos Total + Litros → Calcular Preço/Litro
+        else if (totalCost > 0 && liters > 0 && pricePerLiter === 0) {
+            const calculatedPrice = totalCost / liters;
+            document.getElementById('price_per_liter').value = calculatedPrice.toFixed(3);
+        }
+    }
+}
+
+// Validação do formulário
+document.getElementById('editFuelForm').addEventListener('submit', function(e) {
+    const liters = parseFloat(document.getElementById('liters').value) || 0;
+    const pricePerLiter = parseFloat(document.getElementById('price_per_liter').value) || 0;
+    const totalCost = parseFloat(document.getElementById('total_cost').value) || 0;
+
+    if (liters <= 0 || pricePerLiter <= 0 || totalCost <= 0) {
+        e.preventDefault();
+        alert('Por favor, preencha todos os campos obrigatórios com valores válidos!');
+        return false;
+    }
+
+    // Show loading
+    const submitBtn = this.querySelector('button[type="submit"]');
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Salvando...';
+    submitBtn.disabled = true;
+});
+</script>
+{% endblock %}
