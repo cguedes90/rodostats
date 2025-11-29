@@ -203,12 +203,110 @@
                 <i class="fas fa-car fa-5x text-light mb-4"></i>
                 <h3 class="text-light mb-3">Nenhum veículo cadastrado</h3>
                 <p class="text-light-emphasis mb-4">
-                    Comece cadastrando seu primeiro veículo para começar a controlar 
+                    Comece cadastrando seu primeiro veículo para começar a controlar
                     seus gastos com combustível.
                 </p>
                 <a href="{{ url_for('add_vehicle') }}" class="btn btn-primary btn-lg">
                     <i class="fas fa-plus me-2"></i>Cadastrar Primeiro Veículo
                 </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Veículos Arquivados -->
+{% if archived_vehicles %}
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#archivedSection">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-archive me-2 text-warning"></i>
+                        Veículos Arquivados ({{ archived_vehicles | length }})
+                    </h5>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <small class="text-muted">Clique para expandir</small>
+            </div>
+            <div class="collapse" id="archivedSection">
+                <div class="card-body">
+                    <div class="row">
+                        {% for vehicle in archived_vehicles %}
+                        <div class="col-lg-4 col-md-6 mb-4">
+                            <div class="card vehicle-card archived-card h-100">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 text-light">
+                                        <i class="fas fa-archive me-2 text-warning"></i>
+                                        {{ vehicle.name }}
+                                    </h5>
+                                    <span class="badge bg-secondary">Arquivado</span>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-2">
+                                        <small class="text-info fw-semibold">Modelo</small>
+                                        <p class="fw-bold text-white mb-0">{{ vehicle.brand }} {{ vehicle.model }}</p>
+                                    </div>
+                                    <div class="row mb-3">
+                                        <div class="col-6">
+                                            <small class="text-info fw-semibold">Placa</small>
+                                            <p class="fw-bold text-white mb-0">
+                                                {% if vehicle.license_plate %}
+                                                    {{ vehicle.license_plate }}
+                                                {% else %}
+                                                    <span class="text-warning">Não informada</span>
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                        <div class="col-6">
+                                            <small class="text-info fw-semibold">Ano</small>
+                                            <p class="fw-bold text-white mb-0">{{ vehicle.year }}</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- Estatísticas do veículo arquivado -->
+                                    {% set vehicle_stats = vehicle.fuel_records %}
+                                    {% if vehicle_stats %}
+                                    <div class="border-top pt-3 mt-3">
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <div class="metric-value text-primary" style="font-size: 1.2rem;">
+                                                    {{ vehicle_stats | length }}
+                                                </div>
+                                                <div class="metric-label">Registros</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="metric-value text-success" style="font-size: 1.2rem;">
+                                                    R$ {{ "%.0f"|format(vehicle_stats | sum(attribute='total_cost')) }}
+                                                </div>
+                                                <div class="metric-label">Total</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <div class="metric-value text-info" style="font-size: 1.2rem;">
+                                                    {{ "%.0f"|format(vehicle_stats | sum(attribute='liters')) }}L
+                                                </div>
+                                                <div class="metric-label">Litros</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="card-footer bg-transparent">
+                                    <form method="POST" action="{{ url_for('reactivate_vehicle', vehicle_id=vehicle.id) }}">
+                                        <button type="submit" class="btn btn-success btn-sm w-100">
+                                            <i class="fas fa-undo me-1"></i>Reativar Veículo
+                                        </button>
+                                    </form>
+                                    <small class="text-muted d-block mt-2 text-center">
+                                        Arquivado - Histórico preservado
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -244,36 +342,108 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Função para confirmar exclusão com SweetAlert2
+// Função para confirmar exclusão com SweetAlert2 - Modal Inteligente
 function confirmDelete(vehicleId, vehicleName) {
-    Swal.fire({
-        title: 'Excluir Veículo?',
-        html: `Tem certeza que deseja excluir <strong>"${vehicleName}"</strong>?<br><br>
-               <small class="text-muted">Os registros de abastecimento serão mantidos para histórico.</small>`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: '<i class="fas fa-trash me-2"></i>Sim, excluir!',
-        cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
-        reverseButtons: true,
-        customClass: {
-            popup: 'dark-swal',
-            confirmButton: 'btn btn-danger',
-            cancelButton: 'btn btn-secondary'
-        }
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Criar form para submissão POST
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = `/vehicle/${vehicleId}/delete`;
+    // Buscar quantidade de abastecimentos do veículo
+    fetch(`/api/vehicle/${vehicleId}/fuel_count`)
+        .then(response => response.json())
+        .then(data => {
+            const fuelCount = data.count || 0;
 
-            // Adicionar ao body e submeter
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
+            Swal.fire({
+                title: 'Arquivar ou Excluir Veículo?',
+                html: `
+                    <div class="text-start">
+                        <p class="mb-3">O que deseja fazer com <strong>"${vehicleName}"</strong>?</p>
+
+                        <div class="alert alert-info mb-3">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Recomendado:</strong> Arquivar o veículo mantém seu histórico de
+                            <strong>${fuelCount} abastecimento${fuelCount !== 1 ? 's' : ''}</strong>
+                            para consultas futuras e relatórios.
+                        </div>
+
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="deleteType" id="archiveOption" value="archive" checked>
+                            <label class="form-check-label" for="archiveOption">
+                                <i class="fas fa-archive text-warning me-2"></i>
+                                <strong>Arquivar</strong> - Remove da lista, mantém histórico
+                            </label>
+                        </div>
+
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="deleteType" id="deleteOption" value="delete">
+                            <label class="form-check-label" for="deleteOption">
+                                <i class="fas fa-trash text-danger me-2"></i>
+                                <strong>Excluir Permanentemente</strong> - Remove veículo e todos os ${fuelCount} registros
+                            </label>
+                        </div>
+
+                        <div class="alert alert-danger mt-3" id="deleteWarning" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>ATENÇÃO:</strong> Esta ação não pode ser desfeita!
+                        </div>
+                    </div>
+                `,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: '<i class="fas fa-check me-2"></i>Confirmar',
+                cancelButtonText: '<i class="fas fa-times me-2"></i>Cancelar',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'dark-swal',
+                    confirmButton: 'btn btn-danger',
+                    cancelButton: 'btn btn-secondary'
+                },
+                didOpen: () => {
+                    // Mostrar aviso quando selecionar "Excluir Permanentemente"
+                    const deleteOption = document.getElementById('deleteOption');
+                    const archiveOption = document.getElementById('archiveOption');
+                    const deleteWarning = document.getElementById('deleteWarning');
+
+                    deleteOption.addEventListener('change', () => {
+                        if (deleteOption.checked) {
+                            deleteWarning.style.display = 'block';
+                        }
+                    });
+
+                    archiveOption.addEventListener('change', () => {
+                        deleteWarning.style.display = 'none';
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const deleteType = document.querySelector('input[name="deleteType"]:checked').value;
+
+                    // Criar form para submissão POST
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = `/vehicle/${vehicleId}/delete`;
+
+                    // Adicionar campo hidden com tipo de exclusão
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'delete_type';
+                    input.value = deleteType;
+                    form.appendChild(input);
+
+                    // Adicionar ao body e submeter
+                    document.body.appendChild(form);
+                    form.submit();
+                }
+            });
+        })
+        .catch(error => {
+            console.error('Erro ao buscar dados do veículo:', error);
+            // Fallback para modal simples
+            Swal.fire({
+                title: 'Erro',
+                text: 'Não foi possível carregar os dados do veículo. Tente novamente.',
+                icon: 'error'
+            });
+        });
 }
 </script>
 
@@ -298,6 +468,24 @@ function confirmDelete(vehicleId, vehicleName) {
 
 .vehicle-card .card-footer {
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Cards de veículos arquivados */
+.archived-card {
+    opacity: 0.85;
+    border: 1px solid rgba(255, 193, 7, 0.2);
+    background: rgba(50, 50, 50, 0.05);
+}
+
+.archived-card:hover {
+    opacity: 1;
+    box-shadow: 0 10px 30px rgba(255, 193, 7, 0.15);
+    border-color: #ffc107;
+}
+
+.archived-card .card-header {
+    background: rgba(255, 193, 7, 0.1);
+    border-bottom: 1px solid rgba(255, 193, 7, 0.2);
 }
 </style>
 {% endblock %}

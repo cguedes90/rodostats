@@ -141,8 +141,8 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-3 mb-2">
-                        <button class="btn btn-outline-success w-100" onclick="createDemoFleet()">
-                            <i class="fas fa-plus me-2"></i>Criar Frota Demo
+                        <button class="btn btn-primary w-100" onclick="openAddClientModal()">
+                            <i class="fas fa-user-plus me-2"></i>Adicionar Cliente
                         </button>
                     </div>
                     <div class="col-md-3 mb-2">
@@ -166,7 +166,145 @@
     </div>
 </div>
 
+<!-- Modal para Adicionar Cliente -->
+<div class="modal fade" id="addClientModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>Adicionar Novo Cliente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('admin_add_client') }}" method="POST" id="addClientForm">
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Informações Básicas -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">
+                                <i class="fas fa-info-circle me-2"></i>Informações Básicas
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="client_email" class="form-label">Email *</label>
+                                <input type="email" class="form-control" id="client_email" name="email" required>
+                                <div class="form-text">Este será o login do cliente</div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="client_name" class="form-label">Nome/Empresa *</label>
+                                <input type="text" class="form-control" id="client_name" name="name" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="client_phone" class="form-label">Telefone</label>
+                                <input type="tel" class="form-control" id="client_phone" name="phone">
+                            </div>
+                        </div>
+
+                        <!-- Configurações de Conta -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3">
+                                <i class="fas fa-cogs me-2"></i>Configurações de Conta
+                            </h6>
+
+                            <div class="mb-3">
+                                <label for="client_type" class="form-label">Tipo de Cliente *</label>
+                                <select class="form-select" id="client_type" name="client_type" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="pf">PF - Pessoa Física</option>
+                                    <option value="frota">Frota - Empresa</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="account_plan" class="form-label">Plano da Conta *</label>
+                                <select class="form-select" id="account_plan" name="account_plan" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="free">Gratuito</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="enterprise">Enterprise</option>
+                                </select>
+                            </div>
+
+                            <div class="mb-3" id="fleet_fields" style="display: none;">
+                                <label for="company_cnpj" class="form-label">CNPJ</label>
+                                <input type="text" class="form-control" id="company_cnpj" name="cnpj">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Informações do Plano -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6>Recursos por Plano:</h6>
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <strong>Gratuito:</strong>
+                                        <ul class="mb-0">
+                                            <li>Funcionalidades básicas</li>
+                                            <li>5 veículos (Frota)</li>
+                                            <li>Suporte por email</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Premium:</strong>
+                                        <ul class="mb-0">
+                                            <li>Relatórios avançados</li>
+                                            <li>20 veículos (Frota)</li>
+                                            <li>Suporte prioritário</li>
+                                        </ul>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>Enterprise:</strong>
+                                        <ul class="mb-0">
+                                            <li>API completa</li>
+                                            <li>Veículos ilimitados</li>
+                                            <li>Suporte dedicado</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus me-1"></i>Criar Cliente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+function openAddClientModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addClientModal'));
+    modal.show();
+
+    // Reset form
+    document.getElementById('addClientForm').reset();
+    document.getElementById('fleet_fields').style.display = 'none';
+}
+
+// Controlar campos dinâmicos baseado no tipo de cliente
+document.getElementById('client_type').addEventListener('change', function() {
+    const fleetFields = document.getElementById('fleet_fields');
+    const cnpjField = document.getElementById('company_cnpj');
+
+    if (this.value === 'frota') {
+        fleetFields.style.display = 'block';
+        cnpjField.required = true;
+    } else {
+        fleetFields.style.display = 'none';
+        cnpjField.required = false;
+        cnpjField.value = '';
+    }
+});
+
 function createDemoFleet() {
     fetch('/create_demo_user')
         .then(response => response.json())

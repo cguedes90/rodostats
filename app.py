@@ -1985,18 +1985,23 @@ def dashboard():
 @app.route('/vehicles')
 @login_required
 def vehicles():
-    """Lista de veiculos"""
+    """Lista de veiculos ativos e arquivados"""
+    # Veículos ativos
     vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=True).all()
-    
+
+    # Veículos arquivados
+    archived_vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_active=False).all()
+
     # Calcular resumo da frota dos últimos 30 dias
     thirty_days_ago = datetime.now() - timedelta(days=30)
-    
-    # Buscar registros dos últimos 30 dias
+
+    # Buscar registros dos últimos 30 dias (apenas veículos ativos)
     recent_records = FuelRecord.query.join(Vehicle).filter(
         Vehicle.user_id == current_user.id,
+        Vehicle.is_active == True,
         FuelRecord.date >= thirty_days_ago.date()
     ).all()
-    
+
     # Calcular métricas dos últimos 30 dias
     fleet_summary = {
         'total_vehicles': len(vehicles),
@@ -2005,13 +2010,13 @@ def vehicles():
         'total_liters_30d': sum(record.liters for record in recent_records) if recent_records else 0,
         'avg_consumption_30d': 0
     }
-    
+
     # Calcular consumo médio dos últimos 30 dias
     consumptions_30d = []
     for vehicle in vehicles:
         vehicle_records = [r for r in recent_records if r.vehicle_id == vehicle.id]
         vehicle_records.sort(key=lambda x: x.date)
-        
+
         for i in range(1, len(vehicle_records)):
             if vehicle_records[i].odometer and vehicle_records[i-1].odometer:
                 distance = vehicle_records[i].odometer - vehicle_records[i-1].odometer
@@ -2019,11 +2024,14 @@ def vehicles():
                     consumption = distance / vehicle_records[i].liters
                     if 3 <= consumption <= 25:
                         consumptions_30d.append(consumption)
-    
+
     if consumptions_30d:
         fleet_summary['avg_consumption_30d'] = sum(consumptions_30d) / len(consumptions_30d)
-    
-    return render_template('vehicles.html', vehicles=vehicles, fleet_summary=fleet_summary)
+
+    return render_template('vehicles.html',
+                         vehicles=vehicles,
+                         archived_vehicles=archived_vehicles,
+                         fleet_summary=fleet_summary)
 
 @app.route('/add_vehicle', methods=['GET', 'POST'])
 @login_required
@@ -2125,22 +2133,68 @@ def vehicle_detail(vehicle_id):
                          recent_expense=recent_expense,
                          oil_alert=oil_alert)
 
+@app.route('/api/vehicle/<int:vehicle_id>/fuel_count')
+@login_required
+def vehicle_fuel_count(vehicle_id):
+    """API para contar abastecimentos de um veículo"""
+    vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
+    count = FuelRecord.query.filter_by(vehicle_id=vehicle_id).count()
+    return jsonify({'count': count})
+
 @app.route('/vehicle/<int:vehicle_id>/delete', methods=['POST'])
 @login_required
 def delete_vehicle(vehicle_id):
-    """Excluir veículo (soft delete)"""
+    """Arquivar ou excluir veículo permanentemente"""
+    vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
+
+    delete_type = request.form.get('delete_type', 'archive')
+
+    try:
+        if delete_type == 'delete':
+            # Hard delete - Remove veículo e TODOS os registros relacionados
+            fuel_count = FuelRecord.query.filter_by(vehicle_id=vehicle_id).count()
+            maintenance_count = MaintenanceRecord.query.filter_by(vehicle_id=vehicle_id).count()
+
+            # Excluir todos os abastecimentos
+            FuelRecord.query.filter_by(vehicle_id=vehicle_id).delete()
+
+            # Excluir todas as manutenções
+            MaintenanceRecord.query.filter_by(vehicle_id=vehicle_id).delete()
+
+            # Excluir o veículo
+            db.session.delete(vehicle)
+            db.session.commit()
+
+            flash(f'Veículo "{vehicle.name}" e {fuel_count} abastecimento(s) excluídos permanentemente!', 'success')
+        else:
+            # Soft delete - Apenas marca como inativo (PADRÃO)
+            vehicle.is_active = False
+            db.session.commit()
+
+            flash(f'Veículo "{vehicle.name}" arquivado com sucesso! O histórico foi preservado.', 'success')
+
+    except Exception as e:
+        db.session.rollback()
+        flash('Erro ao processar solicitação. Tente novamente.', 'error')
+        print(f"Erro ao excluir/arquivar veículo: {e}")
+
+    return redirect(url_for('vehicles'))
+
+@app.route('/vehicle/<int:vehicle_id>/reactivate', methods=['POST'])
+@login_required
+def reactivate_vehicle(vehicle_id):
+    """Reativar veículo arquivado"""
     vehicle = Vehicle.query.filter_by(id=vehicle_id, user_id=current_user.id).first_or_404()
 
     try:
-        # Soft delete - apenas marca como inativo
-        vehicle.is_active = False
+        vehicle.is_active = True
         db.session.commit()
 
-        flash(f'Veículo "{vehicle.name}" excluído com sucesso!', 'success')
+        flash(f'Veículo "{vehicle.name}" reativado com sucesso!', 'success')
     except Exception as e:
         db.session.rollback()
-        flash('Erro ao excluir veículo. Tente novamente.', 'error')
-        print(f"Erro ao excluir veículo: {e}")
+        flash('Erro ao reativar veículo. Tente novamente.', 'error')
+        print(f"Erro ao reativar veículo: {e}")
 
     return redirect(url_for('vehicles'))
 
