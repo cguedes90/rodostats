@@ -3,85 +3,34 @@
 {% block title %}Dashboard - FuelTracker Pro{% endblock %}
 
 {% block content %}
-<div class="row mb-4">
-    <div class="col-12">
-        <h1 class="gradient-text">
-            <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-        </h1>
-        <p class="text-info">Visão geral do seu controle de combustível</p>
-    </div>
-</div>
 
-<!-- Filtros -->
+<!-- Sistema de Boas-Vindas Inteligente -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-filter me-2"></i>Filtros
-            </div>
-            <div class="card-body">
-                <form method="GET" class="row g-3">
-                    <div class="col-md-4">
-                        <label for="vehicle_id" class="form-label">Veículo</label>
-                        <select class="form-select" id="vehicle_id" name="vehicle_id">
-                            <option value="">Todos os veículos</option>
-                            {% for vehicle in vehicles %}
-                                <option value="{{ vehicle.id }}" 
-                                        {% if selected_vehicle == vehicle.id %}selected{% endif %}>
-                                    {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
-                                </option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <label for="days" class="form-label">Período</label>
-                        <select class="form-select" id="days" name="days">
-                            <option value="">Todos os dados</option>
-                            <option value="7" {% if selected_days == 7 %}selected{% endif %}>Últimos 7 dias</option>
-                            <option value="30" {% if selected_days == 30 %}selected{% endif %}>Últimos 30 dias</option>
-                            <option value="365" {% if selected_days == 365 %}selected{% endif %}>Último ano</option>
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
-                        <button type="submit" class="btn btn-primary me-2">
-                            <i class="fas fa-search me-1"></i>Filtrar
-                        </button>
-                        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">
-                            <i class="fas fa-times me-1"></i>Limpar
-                        </a>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Comando de Voz Inteligente -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card gradient-card">
-            <div class="card-header">
-                <i class="fas fa-microphone me-2"></i>Comando de Voz Inteligente
-                <span class="badge bg-success ms-2">NOVO!</span>
-            </div>
-            <div class="card-body">
+        <div class="card gradient-card border-0 shadow-lg">
+            <div class="card-body p-4">
                 <div class="row align-items-center">
-                    <div class="col-md-8">
-                        <p class="mb-2"><strong>Fale naturalmente:</strong></p>
-                        <p class="text-muted small mb-3">
-                            "Abasteci R$ 80 de gasolina comum hoje no posto Shell" • 
-                            "Troquei o óleo há 2 dias, gastei R$ 150" • 
-                            "Fiz 450km desde o último abastecimento"
+                    <div class="col-lg-8">
+                        <h2 class="mb-2">
+                            <span id="greeting-icon"></span>
+                            <span id="greeting-text"></span>, {{ current_user.name }}!
+                        </h2>
+                        <p class="text-light mb-3" id="welcome-message">
+                            <i class="fas fa-circle-notch fa-spin me-2"></i>Carregando insights...
                         </p>
-                        <div id="voiceStatus" class="text-info small mb-2"></div>
-                        <div id="voiceTranscript" class="text-success small"></div>
+
+                        <!-- Notificações Importantes -->
+                        <div id="important-notifications" class="mt-3">
+                            <!-- Preenchido via JavaScript -->
+                        </div>
                     </div>
-                    <div class="col-md-4 text-center">
-                        <button id="voiceButton" class="btn btn-primary btn-lg pulse-btn" onclick="startVoiceRecognition()">
-                            <i class="fas fa-microphone fa-2x"></i>
-                            <div class="small mt-1">Clique e Fale</div>
-                        </button>
-                        <div class="small text-muted mt-2">Funciona offline</div>
+                    <div class="col-lg-4 text-center">
+                        <div class="metric-value text-white">R$ {{ "%.2f"|format(total_spent) }}</div>
+                        <div class="text-light">Total Gasto no Período</div>
+                        <small class="text-light-emphasis">
+                            <i class="fas fa-chart-line me-1"></i>
+                            {{ recent_records|length }} abastecimentos registrados
+                        </small>
                     </div>
                 </div>
             </div>
@@ -89,98 +38,122 @@
     </div>
 </div>
 
-<!-- Métricas de Gastos -->
+<!-- Ações Rápidas - DESTAQUE PRINCIPAL -->
 <div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card metric-card">
-            <div class="card-body text-center">
-                <div class="metric-value">R$ {{ "%.2f"|format(total_spent) }}</div>
-                <div class="metric-label">Total Gasto</div>
-                <i class="fas fa-money-bill-wave fa-2x text-success mt-2"></i>
-            </div>
-        </div>
+    <div class="col-12 mb-3">
+        <h4 class="text-white">
+            <i class="fas fa-bolt me-2 text-warning"></i>Ações Rápidas
+        </h4>
+        <p class="text-light-emphasis small">O que você deseja fazer agora?</p>
     </div>
+
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card metric-card">
+        <a href="{{ url_for('vehicles') }}" class="text-decoration-none">
+            <div class="card quick-action-card h-100 border-primary">
+                <div class="card-body text-center p-4">
+                    <div class="quick-action-icon mb-3">
+                        <i class="fas fa-gas-pump fa-3x text-primary"></i>
+                    </div>
+                    <h5 class="text-white mb-2">Abastecer Agora</h5>
+                    <p class="text-light-emphasis small mb-0">Registrar novo abastecimento</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <a href="{{ url_for('vehicles') }}" class="text-decoration-none">
+            <div class="card quick-action-card h-100 border-warning">
+                <div class="card-body text-center p-4">
+                    <div class="quick-action-icon mb-3">
+                        <i class="fas fa-tools fa-3x text-warning"></i>
+                    </div>
+                    <h5 class="text-white mb-2">Manutenção</h5>
+                    <p class="text-light-emphasis small mb-0">Registrar manutenção do veículo</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <a href="{{ url_for('vehicles') }}" class="text-decoration-none">
+            <div class="card quick-action-card h-100 border-success">
+                <div class="card-body text-center p-4">
+                    <div class="quick-action-icon mb-3">
+                        <i class="fas fa-car fa-3x text-success"></i>
+                    </div>
+                    <h5 class="text-white mb-2">Minha Garagem</h5>
+                    <p class="text-light-emphasis small mb-0">Ver e gerenciar veículos</p>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <a href="{{ url_for('analytics') }}" class="text-decoration-none">
+            <div class="card quick-action-card h-100 border-info">
+                <div class="card-body text-center p-4">
+                    <div class="quick-action-icon mb-3">
+                        <i class="fas fa-chart-bar fa-3x text-info"></i>
+                    </div>
+                    <h5 class="text-white mb-2">Relatórios</h5>
+                    <p class="text-light-emphasis small mb-0">Análises e estatísticas</p>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+
+<!-- Resumo Rápido - Métricas Essenciais -->
+<div class="row mb-4">
+    <div class="col-12 mb-3">
+        <h5 class="text-white">
+            <i class="fas fa-tachometer-alt me-2"></i>Resumo Rápido
+        </h5>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card glass-effect">
             <div class="card-body text-center">
-                <div class="metric-value">{{ "%.1f"|format(total_liters) }}L</div>
+                <div class="metric-value text-primary">{{ "%.1f"|format(total_liters) }}L</div>
                 <div class="metric-label">Total Litros</div>
                 <i class="fas fa-gas-pump fa-2x text-primary mt-2"></i>
             </div>
         </div>
     </div>
+
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card metric-card">
+        <div class="card metric-card glass-effect">
             <div class="card-body text-center">
-                <div class="metric-value">R$ {{ "%.3f"|format(avg_price) }}</div>
+                <div class="metric-value text-warning">R$ {{ "%.3f"|format(avg_price) }}</div>
                 <div class="metric-label">Preço Médio/L</div>
                 <i class="fas fa-calculator fa-2x text-warning mt-2"></i>
             </div>
         </div>
     </div>
+
     <div class="col-lg-3 col-md-6 mb-3">
-        <div class="card metric-card">
+        <div class="card metric-card glass-effect">
             <div class="card-body text-center">
-                <div class="metric-value text-truncate" style="font-size: 1.2rem;">{{ favorite_station }}</div>
-                <div class="metric-label">Posto Favorito</div>
-                <i class="fas fa-star fa-2x text-info mt-2"></i>
+                <div class="metric-value text-success">{{ consumption_metrics.average_consumption }} km/L</div>
+                <div class="metric-label">Consumo Médio</div>
+                <i class="fas fa-leaf fa-2x text-success mt-2"></i>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-3 col-md-6 mb-3">
+        <div class="card metric-card glass-effect">
+            <div class="card-body text-center">
+                <div class="metric-value text-info">{{ consumption_metrics.total_km }}</div>
+                <div class="metric-label">KM Rodados</div>
+                <i class="fas fa-road fa-2x text-info mt-2"></i>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Métricas de Quilometragem e Consumo -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-road me-2"></i>Análise de Quilometragem e Consumo
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="card glass-effect">
-                            <div class="card-body text-center">
-                                <div class="metric-value text-info">{{ consumption_metrics.total_km }}</div>
-                                <div class="metric-label">Total KM Rodados</div>
-                                <i class="fas fa-route fa-2x text-info mt-2"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="card glass-effect">
-                            <div class="card-body text-center">
-                                <div class="metric-value text-success">{{ consumption_metrics.average_consumption }} km/L</div>
-                                <div class="metric-label">Consumo Médio</div>
-                                <i class="fas fa-leaf fa-2x text-success mt-2"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="card glass-effect">
-                            <div class="card-body text-center">
-                                <div class="metric-value text-primary">{{ consumption_metrics.best_consumption }} km/L</div>
-                                <div class="metric-label">Melhor Rendimento</div>
-                                <i class="fas fa-trophy fa-2x text-primary mt-2"></i>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-lg-3 col-md-6 mb-3">
-                        <div class="card glass-effect">
-                            <div class="card-body text-center">
-                                <div class="metric-value text-warning">{{ consumption_metrics.km_last_30_days }}</div>
-                                <div class="metric-label">KM Últimos 30 dias</div>
-                                <i class="fas fa-calendar-day fa-2x text-warning mt-2"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Insights de IA -->
+<!-- Insights Inteligentes - Compacto -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
@@ -190,48 +163,46 @@
                     <span>Insights Inteligentes</span>
                     <small class="badge bg-primary ms-2">IA</small>
                 </div>
-                <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="refreshAIInsights()">
-                        <i class="fas fa-sync-alt me-1"></i>Atualizar
-                    </button>
-                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="refreshAIInsights()">
+                    <i class="fas fa-sync-alt me-1"></i>Atualizar
+                </button>
             </div>
             <div class="card-body">
                 <div class="row">
                     <!-- Coach Inteligente -->
                     <div class="col-lg-4 mb-3">
-                        <div class="card glass-effect border-primary">
+                        <div class="card glass-effect border-primary h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-user-tie text-primary me-2"></i>
                                     <h6 class="card-title mb-0">Coach IA</h6>
                                 </div>
-                                <div id="ai-coach-message" class="text-light">
+                                <div id="ai-coach-message" class="text-light small">
                                     <div class="d-flex align-items-center">
                                         <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
                                             <span class="visually-hidden">Carregando...</span>
                                         </div>
-                                        Analisando seus dados...
+                                        Analisando...
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Recomendações de Combustível -->
+                    <!-- Recomendações -->
                     <div class="col-lg-4 mb-3">
-                        <div class="card glass-effect border-success">
+                        <div class="card glass-effect border-success h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-lightbulb text-success me-2"></i>
                                     <h6 class="card-title mb-0">Recomendações</h6>
                                 </div>
-                                <div id="ai-recommendations" class="text-light">
+                                <div id="ai-recommendations" class="text-light small">
                                     <div class="d-flex align-items-center">
                                         <div class="spinner-border spinner-border-sm text-success me-2" role="status">
                                             <span class="visually-hidden">Carregando...</span>
                                         </div>
-                                        Calculando melhor combustível...
+                                        Calculando...
                                     </div>
                                 </div>
                             </div>
@@ -240,63 +211,23 @@
 
                     <!-- Análise de Tendências -->
                     <div class="col-lg-4 mb-3">
-                        <div class="card glass-effect border-warning">
+                        <div class="card glass-effect border-warning h-100">
                             <div class="card-body">
                                 <div class="d-flex align-items-center mb-2">
                                     <i class="fas fa-chart-line text-warning me-2"></i>
-                                    <h6 class="card-title mb-0">Análise de Gastos</h6>
+                                    <h6 class="card-title mb-0">Tendências</h6>
                                 </div>
-                                <div id="ai-analysis" class="text-light">
+                                <div id="ai-analysis" class="text-light small">
                                     <div class="d-flex align-items-center">
                                         <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
                                             <span class="visually-hidden">Carregando...</span>
                                         </div>
-                                        Analisando padrões...
+                                        Analisando...
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
-
-                <!-- Botão para Relatório Detalhado -->
-                <div class="row mt-3">
-                    <div class="col-12 text-center">
-                        <button class="btn btn-primary me-2" onclick="generateAIReport()">
-                            <i class="fas fa-file-alt me-1"></i>Gerar Relatório Completo
-                        </button>
-                        <button class="btn btn-outline-info" onclick="showRegionalAnalysis()">
-                            <i class="fas fa-map me-1"></i>Análise Regional
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Gráficos -->
-<div class="row mb-4">
-    <div class="col-lg-6 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-pie me-2"></i>Gastos por Combustível
-            </div>
-            <div class="card-body d-flex justify-content-center">
-                <div style="position: relative; width: 280px; height: 280px;">
-                    <canvas id="monthlyChart" width="280" height="280"></canvas>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6 mb-3">
-        <div class="card">
-            <div class="card-header">
-                <i class="fas fa-chart-pie me-2"></i>Volume por Combustível
-            </div>
-            <div class="card-body d-flex justify-content-center">
-                <div style="position: relative; width: 280px; height: 280px;">
-                    <canvas id="fuelChart" width="280" height="280"></canvas>
                 </div>
             </div>
         </div>
@@ -304,26 +235,59 @@
 </div>
 
 <!-- Últimos Abastecimentos -->
-<div class="row">
+<div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-list me-2"></i>Últimos Abastecimentos</span>
+                <span>
+                    <i class="fas fa-list me-2"></i>Últimos Abastecimentos
+                </span>
                 <div>
-                    <a href="{{ url_for('export_data') }}" 
-                       class="btn btn-outline-light btn-sm me-2">
-                        <i class="fas fa-file-csv me-1"></i>CSV
-                    </a>
-                    <a href="{{ url_for('analytics') }}" 
-                       class="btn btn-outline-light btn-sm me-2">
-                        <i class="fas fa-chart-bar me-1"></i>Relatórios
-                    </a>
-                    <a href="{{ url_for('vehicles') }}" 
-                       class="btn btn-primary btn-sm">
-                        <i class="fas fa-car me-1"></i>Minha Garagem
-                    </a>
+                    <button class="btn btn-outline-light btn-sm"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#advancedFilters">
+                        <i class="fas fa-filter me-1"></i>Filtros
+                    </button>
                 </div>
             </div>
+
+            <!-- Filtros Avançados (Colapsados) -->
+            <div class="collapse" id="advancedFilters">
+                <div class="card-body border-bottom">
+                    <form method="GET" class="row g-3">
+                        <div class="col-md-4">
+                            <label for="vehicle_id" class="form-label">Veículo</label>
+                            <select class="form-select" id="vehicle_id" name="vehicle_id">
+                                <option value="">Todos os veículos</option>
+                                {% for vehicle in vehicles %}
+                                    <option value="{{ vehicle.id }}"
+                                            {% if selected_vehicle == vehicle.id %}selected{% endif %}>
+                                        {{ vehicle.brand }} {{ vehicle.model }} ({{ vehicle.license_plate }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="days" class="form-label">Período</label>
+                            <select class="form-select" id="days" name="days">
+                                <option value="">Todos os dados</option>
+                                <option value="7" {% if selected_days == 7 %}selected{% endif %}>Últimos 7 dias</option>
+                                <option value="30" {% if selected_days == 30 %}selected{% endif %}>Últimos 30 dias</option>
+                                <option value="365" {% if selected_days == 365 %}selected{% endif %}>Último ano</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">
+                                <i class="fas fa-search me-1"></i>Filtrar
+                            </button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-light">
+                                <i class="fas fa-times me-1"></i>Limpar
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <div class="card-body">
                 {% if recent_records %}
                     <div class="table-responsive">
@@ -341,7 +305,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for record in recent_records %}
+                                {% for record in recent_records[:10] %}
                                 <tr>
                                     <td>{{ record.date.strftime('%d/%m/%Y') }}</td>
                                     <td>
@@ -379,13 +343,22 @@
                             </tbody>
                         </table>
                     </div>
+
+                    {% if recent_records|length > 10 %}
+                    <div class="text-center mt-3">
+                        <small class="text-light-emphasis">
+                            Mostrando 10 de {{ recent_records|length }} registros.
+                            <a href="{{ url_for('analytics') }}" class="text-info">Ver todos</a>
+                        </small>
+                    </div>
+                    {% endif %}
                 {% else %}
                     <div class="text-center py-5">
-                        <i class="fas fa-gas-pump fa-3x text-light mb-3"></i>
-                        <h5 class="text-light">Nenhum abastecimento encontrado</h5>
+                        <i class="fas fa-gas-pump fa-3x text-light-emphasis mb-3"></i>
+                        <h5 class="text-light">Nenhum abastecimento registrado ainda</h5>
                         <p class="text-light-emphasis">Comece registrando seu primeiro abastecimento!</p>
                         <a href="{{ url_for('vehicles') }}" class="btn btn-primary">
-                            <i class="fas fa-plus me-2"></i>Minha Garagem
+                            <i class="fas fa-plus me-2"></i>Registrar Agora
                         </a>
                     </div>
                 {% endif %}
@@ -394,42 +367,234 @@
     </div>
 </div>
 
-<!-- Floating Action Button -->
-<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 1000;">
-    <a href="{{ url_for('vehicles') }}" class="btn btn-primary rounded-circle" style="width: 60px; height: 60px;">
-        <i class="fas fa-car fa-lg"></i>
-    </a>
+<!-- Recursos Avançados (Colapsados) -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header"
+                 style="cursor: pointer;"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#advancedFeatures">
+                <i class="fas fa-magic me-2"></i>
+                Recursos Avançados
+                <small class="badge bg-info ms-2">Clique para expandir</small>
+                <i class="fas fa-chevron-down float-end"></i>
+            </div>
+            <div class="collapse" id="advancedFeatures">
+                <div class="card-body">
+                    <!-- Comando de Voz -->
+                    <div class="mb-4">
+                        <h6><i class="fas fa-microphone me-2 text-primary"></i>Comando de Voz Inteligente</h6>
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <p class="small mb-2">
+                                    <strong>Exemplos:</strong> "Abasteci R$ 80 de gasolina comum hoje" •
+                                    "Troquei o óleo, gastei R$ 150" • "Fiz 450km"
+                                </p>
+                                <div id="voiceStatus" class="text-info small mb-2"></div>
+                                <div id="voiceTranscript" class="text-success small"></div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <button id="voiceButton" class="btn btn-primary btn-lg" onclick="startVoiceRecognition()">
+                                    <i class="fas fa-microphone fa-2x"></i>
+                                    <div class="small mt-1">Clique e Fale</div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Gráficos -->
+                    <div class="mb-4">
+                        <h6><i class="fas fa-chart-pie me-2 text-success"></i>Visualizações</h6>
+                        <div class="row">
+                            <div class="col-lg-6 mb-3">
+                                <div class="card glass-effect">
+                                    <div class="card-header">Gastos por Combustível</div>
+                                    <div class="card-body d-flex justify-content-center">
+                                        <div style="position: relative; width: 250px; height: 250px;">
+                                            <canvas id="monthlyChart" width="250" height="250"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-lg-6 mb-3">
+                                <div class="card glass-effect">
+                                    <div class="card-header">Volume por Combustível</div>
+                                    <div class="card-body d-flex justify-content-center">
+                                        <div style="position: relative; width: 250px; height: 250px;">
+                                            <canvas id="fuelChart" width="250" height="250"></canvas>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Ferramentas IA -->
+                    <div>
+                        <h6><i class="fas fa-robot me-2 text-warning"></i>Ferramentas de IA</h6>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <button class="btn btn-outline-primary w-100" onclick="generateAIReport()">
+                                    <i class="fas fa-file-alt me-1"></i>Gerar Relatório Completo
+                                </button>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <button class="btn btn-outline-info w-100" onclick="showRegionalAnalysis()">
+                                    <i class="fas fa-map me-1"></i>Análise Regional
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
 <script>
-// 🍕 GRÁFICOS DE PIZZA SIMPLES - CACHE: {{ range(1000,9999)|random }}
-// Dados do backend
+// =================================================================================
+// SISTEMA DE BOAS-VINDAS INTELIGENTE
+// =================================================================================
+
+function updateGreeting() {
+    const now = new Date();
+    const hour = now.getHours();
+    const greetingIcon = document.getElementById('greeting-icon');
+    const greetingText = document.getElementById('greeting-text');
+
+    if (hour >= 5 && hour < 12) {
+        greetingIcon.innerHTML = '<i class="fas fa-sun text-warning me-2"></i>';
+        greetingText.textContent = 'Bom dia';
+    } else if (hour >= 12 && hour < 18) {
+        greetingIcon.innerHTML = '<i class="fas fa-cloud-sun text-info me-2"></i>';
+        greetingText.textContent = 'Boa tarde';
+    } else {
+        greetingIcon.innerHTML = '<i class="fas fa-moon text-primary me-2"></i>';
+        greetingText.textContent = 'Boa noite';
+    }
+}
+
+function generateWelcomeMessage() {
+    const messages = [
+        "Aqui está um resumo das suas últimas atividades.",
+        "Pronto para economizar ainda mais hoje?",
+        "Seus dados estão sendo analisados pela nossa IA.",
+        "Acompanhe seus gastos e otimize seu combustível!",
+        "Gerenciar seus veículos nunca foi tão fácil."
+    ];
+
+    const totalRecords = {{ recent_records|length }};
+    const totalSpent = {{ total_spent }};
+
+    let customMessage = "";
+
+    if (totalRecords === 0) {
+        customMessage = "Comece registrando seu primeiro abastecimento! É rápido e fácil.";
+    } else if (totalRecords < 5) {
+        customMessage = `Você tem ${totalRecords} registro(s). Continue assim para ter análises mais precisas!`;
+    } else if (totalSpent > 1000) {
+        customMessage = `Já foram registrados R$ ${totalSpent.toFixed(2)} em abastecimentos. Veja suas economias nos insights abaixo!`;
+    } else {
+        customMessage = messages[Math.floor(Math.random() * messages.length)];
+    }
+
+    document.getElementById('welcome-message').innerHTML = `
+        <i class="fas fa-info-circle me-2"></i>${customMessage}
+    `;
+}
+
+function loadImportantNotifications() {
+    const notificationsDiv = document.getElementById('important-notifications');
+    const notifications = [];
+
+    // Verificar se tem poucos registros
+    const totalRecords = {{ recent_records|length }};
+    if (totalRecords < 3 && totalRecords > 0) {
+        notifications.push({
+            type: 'info',
+            icon: 'fa-chart-line',
+            message: 'Registre mais abastecimentos para insights mais precisos da IA!'
+        });
+    }
+
+    // Verificar consumo médio
+    const avgConsumption = parseFloat('{{ consumption_metrics.average_consumption }}'.replace(',', '.'));
+    if (avgConsumption > 0 && avgConsumption < 8) {
+        notifications.push({
+            type: 'warning',
+            icon: 'fa-exclamation-triangle',
+            message: `Consumo médio baixo (${avgConsumption} km/L). Considere verificar pneus e filtros!`
+        });
+    } else if (avgConsumption > 15) {
+        notifications.push({
+            type: 'success',
+            icon: 'fa-trophy',
+            message: `Excelente! Seu consumo médio está ótimo: ${avgConsumption} km/L`
+        });
+    }
+
+    // Verificar preço médio
+    const avgPrice = {{ avg_price }};
+    if (avgPrice > 6.0) {
+        notifications.push({
+            type: 'warning',
+            icon: 'fa-money-bill-wave',
+            message: 'Preço médio alto detectado. Use a análise regional para encontrar postos mais baratos!'
+        });
+    }
+
+    // Renderizar notificações
+    if (notifications.length > 0) {
+        notificationsDiv.innerHTML = notifications.map(notif => `
+            <div class="alert alert-${notif.type} alert-dismissible fade show mb-2" role="alert">
+                <i class="fas ${notif.icon} me-2"></i>
+                <small>${notif.message}</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="alert"></button>
+            </div>
+        `).join('');
+    }
+}
+
+// Inicializar quando página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    updateGreeting();
+    generateWelcomeMessage();
+    loadImportantNotifications();
+    loadAIInsights();
+    checkVoiceSupport();
+});
+
+// =================================================================================
+// GRÁFICOS
+// =================================================================================
+
 const monthlyDataByFuel = {{ monthly_data_by_fuel | tojson }};
 const fuelDistribution = {{ fuel_distribution | tojson }};
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🍕 Criando gráficos de pizza...');
-    
-    // GRÁFICO 1: Gastos por Combustível (R$)
+    // GRÁFICO 1: Gastos por Combustível
     const gastosCanvas = document.getElementById('monthlyChart');
     if (gastosCanvas) {
-        // Calcular gastos totais por tipo de combustível
         let gastosData = { 'Gasolina': 0, 'Etanol': 0, 'Diesel': 0 };
-        
-        // Somar todos os meses
+
         Object.values(monthlyDataByFuel || {}).forEach(monthData => {
             gastosData['Gasolina'] += (monthData['Gasolina Comum'] || 0);
             gastosData['Etanol'] += (monthData['Etanol'] || 0);
             gastosData['Diesel'] += (monthData['Diesel'] || 0);
         });
-        
-        // Filtrar apenas combustíveis com valor > 0
+
         const labels1 = [];
         const data1 = [];
         const colors1 = [];
-        
+
         if (gastosData['Gasolina'] > 0) {
             labels1.push('Gasolina');
             data1.push(gastosData['Gasolina']);
@@ -445,14 +610,13 @@ document.addEventListener('DOMContentLoaded', function() {
             data1.push(gastosData['Diesel']);
             colors1.push('#ffc107');
         }
-        
-        // Se não há dados, mostrar exemplo
+
         if (data1.length === 0) {
             labels1.push('Gasolina', 'Etanol');
             data1.push(150, 100);
             colors1.push('#dc3545', '#28a745');
         }
-        
+
         new Chart(gastosCanvas.getContext('2d'), {
             type: 'pie',
             data: {
@@ -466,10 +630,7 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: '#ffffff' }
-                    },
+                    legend: { position: 'bottom', labels: { color: '#ffffff' } },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -480,24 +641,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        console.log('✅ Gráfico Gastos criado!');
     }
-    
-    // GRÁFICO 2: Volume por Combustível (Litros)
+
+    // GRÁFICO 2: Volume por Combustível
     const volumeCanvas = document.getElementById('fuelChart');
     if (volumeCanvas) {
         const labels2 = Object.keys(fuelDistribution || {});
         const data2 = Object.values(fuelDistribution || {});
         const colors2 = ['#dc3545', '#28a745', '#ffc107', '#17a2b8'];
-        
-        // Se não há dados, mostrar exemplo
+
         if (labels2.length === 0 || data2.every(val => val === 0)) {
             labels2.splice(0);
             data2.splice(0);
             labels2.push('Gasolina', 'Etanol');
             data2.push(120, 80);
         }
-        
+
         new Chart(volumeCanvas.getContext('2d'), {
             type: 'doughnut',
             data: {
@@ -512,10 +671,7 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: { color: '#ffffff' }
-                    },
+                    legend: { position: 'bottom', labels: { color: '#ffffff' } },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -526,121 +682,63 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        console.log('✅ Gráfico Volume criado!');
     }
-    
-    console.log('🎉 Ambos gráficos criados com sucesso!');
 });
 
-// Atualizar gráficos quando filtros mudarem
-document.getElementById('vehicle_id').addEventListener('change', function() {
-    updateCharts();
-});
+// =================================================================================
+// INSIGHTS DE IA
+// =================================================================================
 
-document.getElementById('days').addEventListener('change', function() {
-    updateCharts();
-});
-
-function updateCharts() {
-    // Recarregar página para atualizar gráficos
-    const params = new URLSearchParams();
-    const vehicleId = document.getElementById('vehicle_id').value;
-    const days = document.getElementById('days').value;
-    
-    if (vehicleId) params.append('vehicle_id', vehicleId);
-    if (days) params.append('days', days);
-    
-    window.location.href = '/dashboard?' + params.toString();
-}
-
-// === FUNCÕES DA IA ===
-
-// Carregar insights de IA quando a página carrega
-document.addEventListener('DOMContentLoaded', function() {
-    loadAIInsights();
-});
-
-// Carregar todos os insights de IA
 function loadAIInsights() {
     loadCoachMessage();
     loadAIRecommendations();
     loadAIAnalysis();
 }
 
-// Carregar mensagem do coach
 function loadCoachMessage() {
     fetch('/api/ai/coach')
         .then(response => response.json())
         .then(data => {
             const element = document.getElementById('ai-coach-message');
             if (data.message) {
-                element.innerHTML = `
-                    <div class="alert alert-info mb-0 small">
-                        <i class="fas fa-comment-alt me-1"></i>
-                        ${data.message}
-                    </div>
-                `;
+                element.innerHTML = `<i class="fas fa-comment-dots me-1"></i>${data.message}`;
             } else {
-                element.innerHTML = `
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Dados insuficientes ou quota da IA esgotada
-                    </small>
-                `;
+                element.innerHTML = `<small class="text-muted"><i class="fas fa-info-circle me-1"></i>IA temporariamente indisponível</small>`;
             }
         })
         .catch(error => {
             console.error('Erro ao carregar coach:', error);
-            document.getElementById('ai-coach-message').innerHTML = `
-                <small class="text-danger">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    Erro ao carregar insights
-                </small>
-            `;
+            document.getElementById('ai-coach-message').innerHTML = `<small class="text-muted">Erro ao carregar</small>`;
         });
 }
 
-// Carregar recomendações de combustível
 function loadAIRecommendations() {
-    // Usar preços padrão se não estiverem disponíveis
     const params = new URLSearchParams({
         current_gas_price: '5.50',
         current_ethanol_price: '3.89'
     });
-    
+
     fetch('/api/ai/recommendations?' + params.toString())
         .then(response => response.json())
         .then(data => {
             const element = document.getElementById('ai-recommendations');
             if (data.recommendations && data.recommendations.length > 0) {
-                let html = '<div class="small">';
+                let html = '<div>';
                 data.recommendations.slice(0, 2).forEach(rec => {
-                    html += `<div class="mb-1"><i class="fas fa-arrow-right me-1 text-success"></i>${rec}</div>`;
+                    html += `<div class="mb-1"><i class="fas fa-check-circle me-1 text-success"></i>${rec}</div>`;
                 });
                 html += '</div>';
                 element.innerHTML = html;
             } else {
-                element.innerHTML = `
-                    <div class="small">
-                        <div class="mb-1"><i class="fas fa-gas-pump me-1 text-success"></i>Gasolina: R$ ${data.current_prices?.gasolina_comum || '5.50'}</div>
-                        <div class="mb-1"><i class="fas fa-leaf me-1 text-success"></i>Etanol: R$ ${data.current_prices?.etanol || '3.89'}</div>
-                        <small class="text-muted">Análise IA indisponível</small>
-                    </div>
-                `;
+                element.innerHTML = `<small class="text-muted">Análise indisponível</small>`;
             }
         })
         .catch(error => {
-            console.error('Erro ao carregar recomendações:', error);
-            document.getElementById('ai-recommendations').innerHTML = `
-                <small class="text-danger">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    Erro ao carregar recomendações
-                </small>
-            `;
+            console.error('Erro:', error);
+            document.getElementById('ai-recommendations').innerHTML = `<small class="text-muted">Erro</small>`;
         });
 }
 
-// Carregar análise de gastos
 function loadAIAnalysis() {
     fetch('/api/ai/analyze')
         .then(response => response.json())
@@ -649,80 +747,33 @@ function loadAIAnalysis() {
             if (data.analysis && data.analysis.predictions) {
                 const pred = data.analysis.predictions;
                 element.innerHTML = `
-                    <div class="small">
-                        <div class="mb-1"><i class="fas fa-calendar me-1 text-warning"></i>Previsão próximo mês: R$ ${pred.next_month_estimate}</div>
-                        <div class="mb-1"><i class="fas fa-chart-line me-1 text-warning"></i>Tendência: ${pred.trend_analysis}</div>
-                    </div>
-                `;
-            } else if (data.user_data) {
-                const userData = data.user_data;
-                element.innerHTML = `
-                    <div class="small">
-                        <div class="mb-1"><i class="fas fa-database me-1 text-warning"></i>${userData.total_records} registros</div>
-                        <div class="mb-1"><i class="fas fa-money-bill me-1 text-warning"></i>Total: R$ ${userData.total_spent?.toFixed(2)}</div>
-                        <small class="text-muted">Análise IA indisponível</small>
-                    </div>
+                    <div><i class="fas fa-calendar me-1"></i>Próximo mês: R$ ${pred.next_month_estimate}</div>
+                    <div class="mt-1"><i class="fas fa-chart-line me-1"></i>${pred.trend_analysis}</div>
                 `;
             } else {
-                element.innerHTML = `
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Dados insuficientes para análise
-                    </small>
-                `;
+                element.innerHTML = `<small class="text-muted">Análise indisponível</small>`;
             }
         })
         .catch(error => {
-            console.error('Erro ao carregar análise:', error);
-            document.getElementById('ai-analysis').innerHTML = `
-                <small class="text-danger">
-                    <i class="fas fa-exclamation-triangle me-1"></i>
-                    Erro ao carregar análise
-                </small>
-            `;
+            console.error('Erro:', error);
+            document.getElementById('ai-analysis').innerHTML = `<small class="text-muted">Erro</small>`;
         });
 }
 
-// Atualizar insights
 function refreshAIInsights() {
-    // Mostrar spinners novamente
-    document.getElementById('ai-coach-message').innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="spinner-border spinner-border-sm text-primary me-2" role="status">
-                <span class="visually-hidden">Carregando...</span>
-            </div>
-            Analisando seus dados...
-        </div>
-    `;
-    document.getElementById('ai-recommendations').innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="spinner-border spinner-border-sm text-success me-2" role="status">
-                <span class="visually-hidden">Carregando...</span>
-            </div>
-            Calculando melhor combustível...
-        </div>
-    `;
-    document.getElementById('ai-analysis').innerHTML = `
-        <div class="d-flex align-items-center">
-            <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
-                <span class="visually-hidden">Carregando...</span>
-            </div>
-            Analisando padrões...
-        </div>
-    `;
-    
-    // Recarregar dados
+    document.getElementById('ai-coach-message').innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>';
+    document.getElementById('ai-recommendations').innerHTML = '<div class="spinner-border spinner-border-sm text-success" role="status"></div>';
+    document.getElementById('ai-analysis').innerHTML = '<div class="spinner-border spinner-border-sm text-warning" role="status"></div>';
     loadAIInsights();
 }
 
-// Gerar relatório da IA
+// Ferramentas IA (mantidas do código original)
 function generateAIReport() {
     const btn = event.target;
     const originalText = btn.innerHTML;
-    
     btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Gerando...';
     btn.disabled = true;
-    
+
     fetch('/api/ai/report')
         .then(response => response.json())
         .then(data => {
@@ -733,7 +784,7 @@ function generateAIReport() {
             }
         })
         .catch(error => {
-            console.error('Erro ao gerar relatório:', error);
+            console.error('Erro:', error);
             alert('Erro ao gerar relatório. Tente novamente.');
         })
         .finally(() => {
@@ -742,12 +793,10 @@ function generateAIReport() {
         });
 }
 
-// Mostrar análise regional
 function showRegionalAnalysis() {
     showCityInputModal();
 }
 
-// Modal para seleção de cidade com autocomplete
 function showCityInputModal() {
     const modalHtml = `
         <div class="modal fade" id="cityInputModal" tabindex="-1">
@@ -760,16 +809,12 @@ function showCityInputModal() {
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="cityInput" class="form-label">Digite sua cidade:</label>
-                            <div class="position-relative">
-                                <input type="text" class="form-control" id="cityInput" 
-                                       placeholder="Ex: São José dos Campos, São Paulo..." 
-                                       autocomplete="off">
-                                <div id="citySuggestions" class="position-absolute w-100 bg-white border rounded shadow-sm" 
-                                     style="top: 100%; z-index: 1000; max-height: 200px; overflow-y: auto; display: none;"></div>
-                            </div>
+                            <input type="text" class="form-control" id="cityInput"
+                                   placeholder="Ex: São Paulo, Rio de Janeiro..."
+                                   autocomplete="off">
                             <small class="text-muted">
                                 <i class="fas fa-info-circle me-1"></i>
-                                Comece a digitar para ver sugestões de cidades brasileiras
+                                Digite o nome da sua cidade
                             </small>
                         </div>
                     </div>
@@ -783,127 +828,42 @@ function showCityInputModal() {
             </div>
         </div>
     `;
-    
-    // Remover modal existente
+
     const existingModal = document.getElementById('cityInputModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Adicionar novo modal
+    if (existingModal) existingModal.remove();
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    
-    // Configurar autocomplete
-    setupCityAutocomplete();
-    
-    // Mostrar modal
     const modal = new bootstrap.Modal(document.getElementById('cityInputModal'));
     modal.show();
-    
-    // Focar no input após o modal abrir
+
     document.getElementById('cityInputModal').addEventListener('shown.bs.modal', function () {
         document.getElementById('cityInput').focus();
     });
 }
 
-// Configurar sistema de autocomplete
-let brasilianCities = [];
-async function setupCityAutocomplete() {
-    // Carregar lista de cidades se não estiver carregada
-    if (brasilianCities.length === 0) {
-        try {
-            const response = await fetch('/static/cidades_brasil.json');
-            brasilianCities = await response.json();
-        } catch (error) {
-            console.error('Erro ao carregar cidades:', error);
-            brasilianCities = ['São Paulo', 'Rio de Janeiro', 'Brasília', 'Salvador', 'Belo Horizonte'];
-        }
-    }
-    
-    const input = document.getElementById('cityInput');
-    const suggestions = document.getElementById('citySuggestions');
-    
-    input.addEventListener('input', function() {
-        const value = this.value.toLowerCase().trim();
-        
-        if (value.length < 2) {
-            suggestions.style.display = 'none';
-            return;
-        }
-        
-        // Filtrar cidades que começam com ou contêm o texto digitado
-        const filtered = brasilianCities.filter(city => 
-            city.toLowerCase().includes(value)
-        ).slice(0, 8); // Limitar a 8 sugestões
-        
-        if (filtered.length > 0) {
-            suggestions.innerHTML = filtered.map(city => `
-                <div class="suggestion-item p-2 border-bottom text-dark" 
-                     style="cursor: pointer; transition: background-color 0.2s;" 
-                     onclick="selectCity('${city}')"
-                     onmouseover="this.style.backgroundColor='#f8f9fa'" 
-                     onmouseout="this.style.backgroundColor='white'">
-                    <i class="fas fa-map-marker-alt me-2 text-muted"></i>${city}
-                </div>
-            `).join('');
-            suggestions.style.display = 'block';
-        } else {
-            suggestions.style.display = 'none';
-        }
-    });
-    
-    // Esconder sugestões ao clicar fora
-    document.addEventListener('click', function(e) {
-        if (!e.target.closest('#cityInput') && !e.target.closest('#citySuggestions')) {
-            suggestions.style.display = 'none';
-        }
-    });
-    
-    // Permitir Enter para analisar
-    input.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            performRegionalAnalysis();
-        }
-    });
-}
-
-// Selecionar cidade da sugestão
-function selectCity(city) {
-    document.getElementById('cityInput').value = city;
-    document.getElementById('citySuggestions').style.display = 'none';
-}
-
-// Executar análise regional
 function performRegionalAnalysis() {
     const cityInput = document.getElementById('cityInput');
     const region = cityInput.value.trim() || 'Brasil';
-    
+
     if (region.length < 2) {
         alert('Por favor, digite o nome de uma cidade.');
         return;
     }
-    
-    // Fechar modal de input
+
     const inputModal = bootstrap.Modal.getInstance(document.getElementById('cityInputModal'));
     inputModal.hide();
-    
-    // Fazer análise
+
     fetch(`/api/ai/regional?region=${encodeURIComponent(region)}`)
         .then(response => response.json())
         .then(data => {
-            if (data.regional_analysis) {
-                showRegionalModal(data.regional_analysis, data.user_data, region);
-            } else {
-                showRegionalModal(null, data.user_data, region);
-            }
+            showRegionalModal(data.regional_analysis, data.user_data, region);
         })
         .catch(error => {
-            console.error('Erro na análise regional:', error);
+            console.error('Erro:', error);
             alert('Erro ao carregar análise regional. Tente novamente.');
         });
 }
 
-// Modal para relatório de IA
 function showAIReportModal(report, data) {
     const modalHtml = `
         <div class="modal fade" id="aiReportModal" tabindex="-1">
@@ -919,9 +879,8 @@ function showAIReportModal(report, data) {
                         </div>
                         <hr>
                         <small class="text-muted">
-                            Relatório gerado em ${new Date().toLocaleString('pt-BR')} | 
-                            Período: ${data.period} | 
-                            ${data.total_records} registros analisados
+                            Gerado em ${new Date().toLocaleString('pt-BR')} |
+                            ${data.total_records} registros
                         </small>
                     </div>
                     <div class="modal-footer">
@@ -931,410 +890,201 @@ function showAIReportModal(report, data) {
             </div>
         </div>
     `;
-    
-    // Remover modal existente
+
     const existingModal = document.getElementById('aiReportModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Adicionar novo modal
+    if (existingModal) existingModal.remove();
+
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modal = new bootstrap.Modal(document.getElementById('aiReportModal'));
     modal.show();
 }
 
-// Modal para análise regional
 function showRegionalModal(analysis, userData, region) {
-    // Calcular estatísticas adicionais
-    const avgConsumption = userData.total_liters > 0 ? (userData.total_spent / userData.total_liters).toFixed(3) : '0.000';
-    const monthlyAverage = userData.total_spent / (userData.period_months || 1);
-    const dailyAverage = userData.total_spent / ((userData.period_months || 1) * 30);
-    
-    // Dicas baseadas nos dados mesmo sem IA
-    const tips = [];
-    if (userData.average_price_per_liter > 5.5) {
-        tips.push("💡 Seu preço médio está acima de R$ 5,50/L. Considere pesquisar postos mais baratos.");
-    }
-    if (userData.stations_diversity < 2) {
-        tips.push("🔄 Você usa poucos postos. Experimente diversificar para encontrar melhores preços.");
-    }
-    if (userData.fuel_types_used?.includes('ethanol') && userData.fuel_types_used?.includes('gasoline')) {
-        tips.push("⚡ Você usa combustíveis flex. Lembre da regra: etanol vale a pena quando está até 70% do preço da gasolina.");
-    }
-    if (monthlyAverage > 400) {
-        tips.push("📊 Gasto mensal médio alto (R$ " + monthlyAverage.toFixed(2) + "). Considere monitorar o consumo mais de perto.");
-    }
-    
-    const modalHtml = `
-        <div class="modal fade" id="regionalModal" tabindex="-1">
-            <div class="modal-dialog modal-xl">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">
-                            <i class="fas fa-map me-2"></i>Análise Regional - ${region || userData.user_region}
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        ${analysis ? `
-                            <div class="alert alert-success">
-                                <i class="fas fa-brain me-2"></i>
-                                <strong>Análise de IA Disponível!</strong>
-                            </div>
-                            <div class="row">
-                                <div class="col-12">
-                                    <h6><i class="fas fa-robot me-2"></i>Insights da IA:</h6>
-                                    <div class="bg-light p-3 rounded">
-                                        ${JSON.stringify(analysis, null, 2).replace(/\n/g, '<br>')}
-                                    </div>
-                                </div>
-                            </div>
-                            <hr>
-                        ` : `
-                            <div class="alert alert-warning">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>IA Temporariamente Indisponível</strong><br>
-                                <small>Exibindo análise baseada em seus dados históricos de ${userData.period_months} meses</small>
-                            </div>
-                        `}
-                        
-                        <!-- Estatísticas Detalhadas -->
-                        <div class="row mb-4">
-                            <div class="col-12">
-                                <h6><i class="fas fa-chart-bar me-2 text-primary"></i>Suas Estatísticas em ${region}:</h6>
-                            </div>
-                            <div class="col-lg-3 col-md-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <div class="h4 text-primary">R$ ${userData.average_price_per_liter?.toFixed(3)}</div>
-                                        <small>Preço Médio/Litro</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-3 col-md-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <div class="h4 text-success">R$ ${userData.total_spent?.toFixed(2)}</div>
-                                        <small>Total Investido</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-3 col-md-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <div class="h4 text-info">${userData.total_liters?.toFixed(1)}L</div>
-                                        <small>Total Abastecido</small>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-lg-3 col-md-6 mb-3">
-                                <div class="card bg-light">
-                                    <div class="card-body text-center">
-                                        <div class="h4 text-warning">${userData.stations_diversity}</div>
-                                        <small>Postos Utilizados</small>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <!-- Coluna Esquerda: Combustíveis e Análise Mensal -->
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-gas-pump me-2 text-success"></i>Combustíveis Utilizados:</h6>
-                                <div class="mb-3">
-                                    ${userData.fuel_types_used?.map(fuel => {
-                                        const fuelIcon = fuel === 'gasoline' ? 'fas fa-gas-pump' : fuel === 'ethanol' ? 'fas fa-leaf' : 'fas fa-oil-can';
-                                        const fuelName = fuel === 'gasoline' ? 'Gasolina' : fuel === 'ethanol' ? 'Etanol' : fuel;
-                                        return `<span class="badge bg-primary me-2 mb-2"><i class="${fuelIcon} me-1"></i>${fuelName}</span>`;
-                                    }).join('') || '<span class="text-muted">Nenhum combustível registrado</span>'}
-                                </div>
-                                
-                                <h6><i class="fas fa-calendar me-2 text-info"></i>Análise Temporal:</h6>
-                                <ul class="list-unstyled">
-                                    <li><strong>Período analisado:</strong> ${userData.period_months} meses</li>
-                                    <li><strong>Registros totais:</strong> ${userData.total_records}</li>
-                                    <li><strong>Média mensal:</strong> R$ ${monthlyAverage.toFixed(2)}</li>
-                                    <li><strong>Média diária:</strong> R$ ${dailyAverage.toFixed(2)}</li>
-                                </ul>
-                            </div>
-
-                            <!-- Coluna Direita: Dicas e Comparações -->
-                            <div class="col-md-6">
-                                <h6><i class="fas fa-lightbulb me-2 text-warning"></i>Dicas Inteligentes:</h6>
-                                <div class="mb-3">
-                                    ${tips.length > 0 ? tips.map(tip => `
-                                        <div class="alert alert-light py-2 mb-2">
-                                            <small>${tip}</small>
-                                        </div>
-                                    `).join('') : `
-                                        <div class="alert alert-success py-2">
-                                            <small>✅ Seus hábitos de abastecimento estão equilibrados!</small>
-                                        </div>
-                                    `}
-                                </div>
-                                
-                                <h6><i class="fas fa-map-marker-alt me-2 text-danger"></i>Dados da Região:</h6>
-                                <div class="bg-light p-3 rounded">
-                                    <small class="text-muted">
-                                        <strong>Região selecionada:</strong> ${region || userData.user_region}<br>
-                                        <strong>Última atualização:</strong> ${new Date().toLocaleDateString('pt-BR')}<br>
-                                        ${!analysis ? '<em>💭 Análise de IA indisponível - dados limitados ao seu histórico pessoal</em>' : '<em>🧠 Análise enriquecida com IA</em>'}
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        ${userData.monthly_averages && Object.keys(userData.monthly_averages).length > 0 ? `
-                            <hr>
-                            <h6><i class="fas fa-chart-line me-2 text-primary"></i>Histórico Mensal:</h6>
-                            <div class="row">
-                                ${Object.entries(userData.monthly_averages).map(([month, data]) => `
-                                    <div class="col-md-4 mb-2">
-                                        <div class="card border-left-primary">
-                                            <div class="card-body py-2">
-                                                <div class="small">
-                                                    <strong>${month}</strong><br>
-                                                    R$ ${data.total_spent?.toFixed(2)} | ${data.records_count} registros<br>
-                                                    <em>Média: R$ ${data.avg_price?.toFixed(3)}/L</em>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : ''}
-                    </div>
-                    <div class="modal-footer">
-                        <small class="text-muted me-auto">
-                            <i class="fas fa-info-circle me-1"></i>
-                            Análise baseada em ${userData.total_records} registros dos últimos ${userData.period_months} meses
-                        </small>
-                        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
-                            <i class="fas fa-print me-1"></i>Imprimir
-                        </button>
-                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
-                            <i class="fas fa-check me-1"></i>Fechar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // Remover modal existente
-    const existingModal = document.getElementById('regionalModal');
-    if (existingModal) {
-        existingModal.remove();
-    }
-    
-    // Adicionar novo modal
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('regionalModal'));
-    modal.show();
+    alert('Funcionalidade de análise regional em desenvolvimento. Região selecionada: ' + region);
 }
 
 // =================================================================================
-// 🎙️ SISTEMA DE RECONHECIMENTO DE VOZ INTELIGENTE
+// RECONHECIMENTO DE VOZ
 // =================================================================================
 
 let recognition = null;
 let isListening = false;
 
-// Verificar suporte do navegador
 function checkVoiceSupport() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-exclamation-triangle"></i> Seu navegador não suporta reconhecimento de voz. Use Chrome, Edge ou Safari.';
-        document.getElementById('voiceButton').disabled = true;
+        const statusEl = document.getElementById('voiceStatus');
+        if (statusEl) {
+            statusEl.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Navegador não suporta voz.';
+        }
+        const btnEl = document.getElementById('voiceButton');
+        if (btnEl) {
+            btnEl.disabled = true;
+        }
         return false;
     }
     return true;
 }
 
-// Inicializar reconhecimento de voz
 function initVoiceRecognition() {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognition = new SpeechRecognition();
-    
+
     recognition.lang = 'pt-BR';
     recognition.continuous = false;
     recognition.interimResults = true;
-    recognition.maxAlternatives = 1;
-    
+
     recognition.onstart = function() {
         isListening = true;
-        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-microphone text-danger"></i> Escutando... Fale agora!';
+        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-microphone text-danger"></i> Escutando...';
         document.getElementById('voiceButton').innerHTML = '<i class="fas fa-stop fa-2x"></i><div class="small mt-1">Gravando...</div>';
         document.getElementById('voiceButton').classList.add('btn-danger');
         document.getElementById('voiceButton').classList.remove('btn-primary');
     };
-    
+
     recognition.onresult = function(event) {
         const transcript = event.results[event.resultIndex][0].transcript;
         document.getElementById('voiceTranscript').innerHTML = '<strong>Você disse:</strong> "' + transcript + '"';
-        
-        // Se é resultado final, processar
+
         if (event.results[event.resultIndex].isFinal) {
             processVoiceCommand(transcript);
         }
     };
-    
+
     recognition.onerror = function(event) {
-        console.error('Erro no reconhecimento de voz:', event.error);
         resetVoiceButton();
-        
-        let errorMessage = 'Erro desconhecido';
-        switch(event.error) {
-            case 'no-speech':
-                errorMessage = 'Nenhuma fala detectada. Tente novamente.';
-                break;
-            case 'audio-capture':
-                errorMessage = 'Erro no microfone. Verifique as permissões.';
-                break;
-            case 'not-allowed':
-                errorMessage = 'Permissão negada. Libere o acesso ao microfone.';
-                break;
-            case 'network':
-                errorMessage = 'Erro de conexão. Verifique sua internet.';
-                break;
-        }
-        
-        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> ' + errorMessage;
+        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Erro no reconhecimento';
     };
-    
+
     recognition.onend = function() {
         resetVoiceButton();
     };
 }
 
-// Resetar botão de voz
 function resetVoiceButton() {
     isListening = false;
-    document.getElementById('voiceStatus').innerHTML = '';
-    document.getElementById('voiceButton').innerHTML = '<i class="fas fa-microphone fa-2x"></i><div class="small mt-1">Clique e Fale</div>';
-    document.getElementById('voiceButton').classList.add('btn-primary');
-    document.getElementById('voiceButton').classList.remove('btn-danger');
+    const statusEl = document.getElementById('voiceStatus');
+    if (statusEl) statusEl.innerHTML = '';
+
+    const btnEl = document.getElementById('voiceButton');
+    if (btnEl) {
+        btnEl.innerHTML = '<i class="fas fa-microphone fa-2x"></i><div class="small mt-1">Clique e Fale</div>';
+        btnEl.classList.add('btn-primary');
+        btnEl.classList.remove('btn-danger');
+    }
 }
 
-// Iniciar reconhecimento de voz
 function startVoiceRecognition() {
     if (!checkVoiceSupport()) return;
-    
+
     if (isListening) {
         recognition.stop();
         return;
     }
-    
+
     if (!recognition) {
         initVoiceRecognition();
     }
-    
+
     document.getElementById('voiceTranscript').innerHTML = '';
     recognition.start();
 }
 
-// Processar comando de voz usando IA
 async function processVoiceCommand(transcript) {
     try {
-        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-brain text-info"></i> Processando com IA...';
-        
+        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-brain text-info"></i> Processando...';
+
         const response = await fetch('/api/ai/voice-command', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                transcript: transcript
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transcript: transcript })
         });
-        
-        if (!response.ok) {
-            throw new Error('Erro na requisição');
-        }
-        
+
         const result = await response.json();
-        
+
         if (result.success) {
             document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-check-circle text-success"></i> ' + result.message;
-            
-            // Se foram extraídos dados, mostrar confirmação
-            if (result.data) {
-                showVoiceDataConfirmation(result.data, transcript);
-            }
-            
-            // Recarregar página após 3 segundos se dados foram salvos
             if (result.data_saved) {
-                setTimeout(() => {
-                    window.location.reload();
-                }, 3000);
+                setTimeout(() => window.location.reload(), 2000);
             }
         } else {
             document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-question-circle text-warning"></i> ' + result.message;
         }
-        
     } catch (error) {
-        console.error('Erro ao processar comando de voz:', error);
-        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Erro ao processar comando. Tente novamente.';
+        console.error('Erro:', error);
+        document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-exclamation-triangle text-danger"></i> Erro ao processar';
     }
 }
 
-// Mostrar confirmação dos dados extraídos
-function showVoiceDataConfirmation(data, originalText) {
-    const modalHtml = `
-        <div class="modal fade" id="voiceDataModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header bg-gradient-primary text-white">
-                        <h5 class="modal-title">
-                            <i class="fas fa-microphone me-2"></i>Comando de Voz Processado
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="alert alert-info">
-                            <strong><i class="fas fa-quote-left me-1"></i>Você disse:</strong><br>
-                            "${originalText}"
-                        </div>
-                        
-                        <h6><i class="fas fa-brain me-2"></i>Dados Extraídos:</h6>
-                        <div class="row">
-                            ${Object.entries(data).map(([key, value]) => `
-                                <div class="col-6 mb-2">
-                                    <strong>${key}:</strong> ${value || 'N/A'}
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times me-1"></i>Fechar
-                        </button>
-                        <button type="button" class="btn btn-success" onclick="confirmVoiceData()" data-bs-dismiss="modal">
-                            <i class="fas fa-check me-1"></i>Confirmar e Salvar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
-    const modal = new bootstrap.Modal(document.getElementById('voiceDataModal'));
-    modal.show();
-}
-
-// Confirmar e salvar dados de voz
-function confirmVoiceData() {
-    document.getElementById('voiceStatus').innerHTML = '<i class="fas fa-save text-success"></i> Dados salvos com sucesso!';
-    setTimeout(() => {
-        window.location.reload();
-    }, 2000);
-}
-
-// Inicializar quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    checkVoiceSupport();
-});
-
 </script>
+
+<style>
+/* Ações Rápidas - Cards Interativos */
+.quick-action-card {
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.quick-action-card:hover {
+    transform: translateY(-5px);
+    background: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.quick-action-card:hover .quick-action-icon i {
+    transform: scale(1.1);
+}
+
+.quick-action-icon i {
+    transition: transform 0.3s ease;
+}
+
+/* Gradient Card para Welcome */
+.gradient-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Metric Cards */
+.metric-card {
+    transition: transform 0.2s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-3px);
+}
+
+.glass-effect {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Collapse Icons */
+[data-bs-toggle="collapse"] {
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+[data-bs-toggle="collapse"]:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Alerts personalizados */
+.alert {
+    border-left: 4px solid;
+}
+
+.alert-info {
+    border-left-color: #17a2b8;
+}
+
+.alert-warning {
+    border-left-color: #ffc107;
+}
+
+.alert-success {
+    border-left-color: #28a745;
+}
+</style>
 {% endblock %}
