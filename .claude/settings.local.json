@@ -75,7 +75,9 @@
       "WebFetch(domain:rodostats.vercel.app)",
       "WebFetch(domain:127.0.0.1)",
       "Bash(venv/Scripts/pip install reportlab==4.0.7 openpyxl==3.1.2)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []

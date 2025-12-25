@@ -35,8 +35,16 @@ except ImportError:
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET', 'your-secret-key-here')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://neondb_owner:npg_ArdO9L4sGxUD@ep-sweet-shape-ac6v4rp3-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require')
+
+# SECURITY: Never hardcode credentials! Always use environment variables
+app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET')
+if not app.config['SECRET_KEY']:
+    raise ValueError("SESSION_SECRET environment variable must be set!")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+if not app.config['SQLALCHEMY_DATABASE_URI']:
+    raise ValueError("DATABASE_URL environment variable must be set!")
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB

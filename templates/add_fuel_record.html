@@ -242,24 +242,55 @@ document.getElementById('processImage').addEventListener('click', function() {
     .then(response => response.json())
     .then(data => {
         if (data.error) {
-            alert('Erro ao processar imagem: ' + data.error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erro ao Processar',
+                text: data.error,
+                confirmButtonText: 'OK'
+            });
         } else {
-            // Preencher campos automaticamente
-            if (data.data) {
-                document.getElementById('date').value = data.data;
+            // Array para controlar campos preenchidos
+            const fieldsFilledList = [];
+
+            // Função para animar campo preenchido
+            function animateField(fieldId, value, fieldName) {
+                const field = document.getElementById(fieldId);
+                if (field && value) {
+                    // Preencher valor
+                    field.value = value;
+
+                    // Adicionar animação de sucesso
+                    field.classList.add('border-success', 'border-3');
+                    field.style.transition = 'all 0.3s ease';
+                    field.style.boxShadow = '0 0 10px rgba(40, 167, 69, 0.5)';
+
+                    // Adicionar checkmark ao lado
+                    const wrapper = field.parentElement;
+                    let checkmark = wrapper.querySelector('.ai-filled-check');
+                    if (!checkmark) {
+                        checkmark = document.createElement('span');
+                        checkmark.className = 'ai-filled-check';
+                        checkmark.innerHTML = '<i class="fas fa-check-circle text-success ms-2"></i>';
+                        checkmark.style.animation = 'fadeIn 0.5s';
+                        wrapper.querySelector('label').appendChild(checkmark);
+                    }
+
+                    fieldsFilledList.push(fieldName);
+
+                    // Remover destaque após 3 segundos
+                    setTimeout(() => {
+                        field.style.boxShadow = '';
+                    }, 3000);
+                }
             }
-            if (data.posto) {
-                document.getElementById('gas_station').value = data.posto;
-            }
-            if (data.litros) {
-                document.getElementById('liters').value = data.litros;
-            }
-            if (data.preco_litro) {
-                document.getElementById('price_per_liter').value = data.preco_litro;
-            }
-            if (data.total) {
-                document.getElementById('total_cost').value = data.total;
-            }
+
+            // Preencher campos com animação
+            if (data.data) animateField('date', data.data, 'Data');
+            if (data.posto) animateField('gas_station', data.posto, 'Posto');
+            if (data.litros) animateField('liters', data.litros, 'Litros');
+            if (data.preco_litro) animateField('price_per_liter', data.preco_litro, 'Preço/L');
+            if (data.total) animateField('total_cost', data.total, 'Total');
+
             if (data.combustivel) {
                 const fuelMap = {
                     'gasolina': 'gasoline',
@@ -268,16 +299,39 @@ document.getElementById('processImage').addEventListener('click', function() {
                     'diesel': 'diesel'
                 };
                 const fuelType = fuelMap[data.combustivel.toLowerCase()] || 'gasoline';
-                document.getElementById('fuel_type').value = fuelType;
+                animateField('fuel_type', fuelType, 'Combustível');
             }
-            if (data.observacoes) {
-                document.getElementById('notes').value = data.observacoes;
-            }
-            
+
+            if (data.observacoes) animateField('notes', data.observacoes, 'Observações');
+
             // Recalcular total se necessário
             calculateTotal();
-            
-            alert('Dados extraídos com sucesso da imagem!');
+
+            // Mostrar toast de sucesso com lista de campos
+            if (fieldsFilledList.length > 0) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'IA Processou com Sucesso!',
+                    html: `
+                        <div class="text-start">
+                            <p><strong>${fieldsFilledList.length} campo(s) preenchido(s) automaticamente:</strong></p>
+                            <ul class="mb-0">
+                                ${fieldsFilledList.map(field => `<li><i class="fas fa-check text-success me-1"></i>${field}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `,
+                    confirmButtonText: 'Ótimo!',
+                    timer: 5000,
+                    timerProgressBar: true
+                });
+            } else {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Nenhum Dado Extraído',
+                    text: 'A IA não conseguiu extrair dados da imagem. Preencha manualmente.',
+                    confirmButtonText: 'OK'
+                });
+            }
         }
     })
     .catch(error => {
