@@ -868,17 +868,6 @@ def load_user(user_id):
         print(f"[LOAD_USER] Erro ao carregar usuário: {e}")
         return None
 
-# === CONTEXT PROCESSOR ===
-
-@app.context_processor
-def inject_cache_version():
-    """Injeta versão de cache em todos os templates para forçar refresh"""
-    import time
-    return {
-        'cache_version': int(time.time()),  # Timestamp atual como versão
-        'app_version': '2.0.0'  # Versão da aplicação
-    }
-
 # === FUNCOES AUXILIARES ===
 
 def allowed_file(filename):

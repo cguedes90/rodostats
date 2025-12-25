@@ -1,15 +1,13 @@
 {
-  "name": "RodoStats - Controle Inteligente de Combustível",
+  "name": "Rodo Stats - Controle de Combustivel",
   "short_name": "RodoStats",
-  "description": "Controle inteligente de gastos com combustível e manutenção veicular com IA integrada",
-  "start_url": "/app",
+  "description": "Controle inteligente de combustivel com IA",
+  "start_url": "/",
   "display": "standalone",
-  "background_color": "#1a1a2e",
+  "background_color": "#1a1a1a",
   "theme_color": "#4A90E2",
-  "orientation": "portrait-primary",
-  "scope": "/",
-  "categories": ["productivity", "finance", "utilities"],
-  "lang": "pt-BR",
+  "orientation": "portrait",
+  "categories": ["finance", "productivity"],
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
@@ -23,58 +21,5 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ],
-  "screenshots": [
-    {
-      "src": "/static/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Adicionar Abastecimento",
-      "short_name": "Abastecer",
-      "description": "Registrar novo abastecimento rapidamente",
-      "url": "/vehicles?quick_fuel=true",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Ver Dashboard",
-      "short_name": "Dashboard", 
-      "description": "Visualizar estatísticas e gráficos",
-      "url": "/app",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    },
-    {
-      "name": "Troca de Óleo",
-      "short_name": "Óleo",
-      "description": "Controlar trocas de óleo",
-      "url": "/oil_list",
-      "icons": [
-        {
-          "src": "/static/icons/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
-    }
-  ],
-  "prefer_related_applications": false,
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
-  "launch_handler": {
-    "client_mode": "focus-existing"
-  }
+  ]
 }

@@ -570,6 +570,32 @@ document.addEventListener('DOMContentLoaded', function() {
     loadImportantNotifications();
     loadAIInsights();
     checkVoiceSupport();
+
+    // Mostrar notificação de nova versão
+    const lastVersion = localStorage.getItem('app_version');
+    const currentVersion = '{{ app_version }}';
+
+    if (lastVersion && lastVersion !== currentVersion) {
+        // Nova versão detectada!
+        setTimeout(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Atualização Disponível!',
+                html: `
+                    <p>O RodoStats foi atualizado para a versão <strong>${currentVersion}</strong></p>
+                    <p class="small text-muted">✨ Novo dashboard com melhor usabilidade<br>
+                    ⚡ Ações rápidas em destaque<br>
+                    🎯 Sistema de boas-vindas inteligente</p>
+                `,
+                confirmButtonText: 'Ótimo!',
+                timer: 5000,
+                timerProgressBar: true
+            });
+        }, 1000);
+    }
+
+    // Salvar versão atual
+    localStorage.setItem('app_version', currentVersion);
 });
 
 // =================================================================================
