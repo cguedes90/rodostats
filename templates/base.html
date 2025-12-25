@@ -49,6 +49,20 @@
             --text-light: #e0e0e0;
             --text-muted: #a0a0a0;
             --border-color: #404040;
+
+            /* Sistema de Cores Padronizado */
+            --color-success: #28a745;    /* Verde - Sucesso, OK, Ativo */
+            --color-warning: #ffc107;    /* Amarelo - Aviso, Atenção, Pendente */
+            --color-danger: #dc3545;     /* Vermelho - Erro, Crítico, Inativo */
+            --color-info: #17a2b8;       /* Azul claro - Informação */
+            --color-primary: #4A90E2;    /* Azul - Principal, Destaque */
+
+            /* Status específicos */
+            --status-active: var(--color-success);
+            --status-archived: var(--color-warning);
+            --status-error: var(--color-danger);
+            --status-pending: var(--color-warning);
+            --status-completed: var(--color-success);
         }
 
         * {

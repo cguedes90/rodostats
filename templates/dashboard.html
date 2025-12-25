@@ -580,16 +580,24 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(() => {
             Swal.fire({
                 icon: 'success',
-                title: 'Atualização Disponível!',
+                title: 'Nova Versão Disponível!',
                 html: `
-                    <p>O RodoStats foi atualizado para a versão <strong>${currentVersion}</strong></p>
-                    <p class="small text-muted">✨ Novo dashboard com melhor usabilidade<br>
-                    ⚡ Ações rápidas em destaque<br>
-                    🎯 Sistema de boas-vindas inteligente</p>
+                    <div class="text-start">
+                        <p><strong>RodoStats ${currentVersion}</strong> - Atualização Completa! 🎉</p>
+                        <ul class="small mb-0">
+                            <li>🔒 <strong>Segurança:</strong> Proteção total de credenciais</li>
+                            <li>✨ <strong>IA Melhorada:</strong> Feedback visual ao processar imagens</li>
+                            <li>📱 <strong>Mobile First:</strong> Responsividade otimizada</li>
+                            <li>🎨 <strong>Cores:</strong> Sistema padronizado de status</li>
+                            <li>🔗 <strong>Atalhos:</strong> Links diretos para ações</li>
+                            <li>🧪 <strong>Testes:</strong> 11 testes automatizados</li>
+                        </ul>
+                    </div>
                 `,
                 confirmButtonText: 'Ótimo!',
-                timer: 5000,
-                timerProgressBar: true
+                timer: 8000,
+                timerProgressBar: true,
+                width: '600px'
             });
         }, 1000);
     }
@@ -1111,6 +1119,88 @@ async function processVoiceCommand(transcript) {
 
 .alert-success {
     border-left-color: #28a745;
+}
+
+/* ===================================
+   RESPONSIVIDADE MOBILE
+   =================================== */
+
+/* Tablets */
+@media (max-width: 992px) {
+    .quick-action-card {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Mobile - Smartphones */
+@media (max-width: 768px) {
+    /* Ações rápidas - 2 colunas */
+    .col-lg-3.col-md-6 {
+        flex: 0 0 50%;
+        max-width: 50%;
+    }
+
+    /* Métricas - 2 colunas */
+    .metric-card {
+        margin-bottom: 1rem;
+    }
+
+    /* Tabela responsiva */
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+
+    /* Reduzir padding */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Boas-vindas mais compacto */
+    .gradient-card h2 {
+        font-size: 1.5rem;
+    }
+
+    /* Esconder texto auxiliar em mobile */
+    .text-light-emphasis.small {
+        display: none;
+    }
+}
+
+/* Mobile pequeno */
+@media (max-width: 480px) {
+    /* Ações rápidas - 1 coluna */
+    .col-lg-3.col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Métricas - 1 coluna */
+    .col-lg-3.col-md-6.mb-3 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Ícones menores */
+    .quick-action-icon i {
+        font-size: 2.5rem !important;
+    }
+
+    /* Títulos menores */
+    h4 {
+        font-size: 1.2rem;
+    }
+
+    h5 {
+        font-size: 1rem;
+    }
+
+    /* Tabela - esconder colunas menos importantes */
+    .table td:nth-child(7),
+    .table th:nth-child(7),
+    .table td:nth-child(8),
+    .table th:nth-child(8) {
+        display: none;
+    }
 }
 </style>
 {% endblock %}

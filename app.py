@@ -884,7 +884,7 @@ def inject_cache_version():
     import time
     return {
         'cache_version': int(time.time()),  # Timestamp atual como versão
-        'app_version': '2.0.0'  # Versão da aplicação
+        'app_version': '2.1.0'  # Versão da aplicação
     }
 
 # === FUNCOES AUXILIARES ===

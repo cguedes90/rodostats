@@ -487,5 +487,90 @@ function confirmDelete(vehicleId, vehicleName) {
     background: rgba(255, 193, 7, 0.1);
     border-bottom: 1px solid rgba(255, 193, 7, 0.2);
 }
+
+/* ===================================
+   RESPONSIVIDADE MOBILE
+   =================================== */
+
+/* Tablets e dispositivos médios */
+@media (max-width: 992px) {
+    .vehicle-stats {
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile - Smartphones */
+@media (max-width: 768px) {
+    /* Cards de veículos ocupam 100% */
+    .col-lg-4.col-md-6 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Estatísticas em coluna única */
+    .vehicle-stats .col-4 {
+        flex: 0 0 33.333%;
+        max-width: 33.333%;
+        font-size: 0.85rem;
+    }
+
+    /* Resumo geral - 2 colunas */
+    .col-md-3 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        margin-bottom: 1rem;
+    }
+
+    /* Botões maiores para touch */
+    .btn-sm {
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    /* Reduzir padding dos cards */
+    .vehicle-card .card-body {
+        padding: 1rem;
+    }
+
+    /* Header do card mais compacto */
+    .vehicle-card .card-header h5 {
+        font-size: 1.1rem;
+    }
+}
+
+/* Mobile pequeno - < 480px */
+@media (max-width: 480px) {
+    /* Estatísticas full width */
+    .vehicle-stats .col-4 {
+        flex: 0 0 100%;
+        max-width: 100%;
+        margin-bottom: 0.5rem;
+        text-align: center;
+        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+    }
+
+    /* Resumo geral - 1 coluna */
+    .col-md-3 {
+        flex: 0 0 100%;
+        max-width: 100%;
+    }
+
+    /* Ícones menores em mobile pequeno */
+    .vehicle-icon i {
+        font-size: 2rem;
+    }
+
+    /* Títulos menores */
+    h2 {
+        font-size: 1.5rem;
+    }
+
+    /* Badges menores */
+    .badge {
+        font-size: 0.75rem;
+    }
+}
 </style>
 {% endblock %}
