@@ -39,10 +39,20 @@ app = Flask(__name__)
 # SECURITY: Never hardcode credentials! Always use environment variables
 app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET')
 if not app.config['SECRET_KEY']:
+    import sys
+    print("=" * 80, file=sys.stderr)
+    print("ERRO CRÍTICO: SESSION_SECRET não configurado!", file=sys.stderr)
+    print("Configure a variável de ambiente SESSION_SECRET no Vercel", file=sys.stderr)
+    print("=" * 80, file=sys.stderr)
     raise ValueError("SESSION_SECRET environment variable must be set!")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 if not app.config['SQLALCHEMY_DATABASE_URI']:
+    import sys
+    print("=" * 80, file=sys.stderr)
+    print("ERRO CRÍTICO: DATABASE_URL não configurado!", file=sys.stderr)
+    print("Configure a variável de ambiente DATABASE_URL no Vercel", file=sys.stderr)
+    print("=" * 80, file=sys.stderr)
     raise ValueError("DATABASE_URL environment variable must be set!")
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False

@@ -9,6 +9,7 @@ python-dotenv==1.0.0
 psycopg2-binary==2.9.9
 gunicorn==21.2.0
 google-generativeai>=0.3.0
+groq>=0.4.0
 requests==2.31.0
 Flask-Mail==0.10.0
 reportlab==4.0.7
