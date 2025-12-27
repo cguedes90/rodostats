@@ -823,7 +823,66 @@
             color: #ffc107 !important;
         }
     </style>
-    
+
+    <!-- CACHE BUSTER AGRESSIVO - v2.2.0 -->
+    <script>
+        (function() {
+            const CURRENT_VERSION = '2.2.0';
+            const CACHE_KEY = 'rodostats_cached_version';
+            const FORCE_RELOAD_KEY = 'rodostats_force_reload_done';
+
+            // Verificar versão em cache
+            const cachedVersion = localStorage.getItem(CACHE_KEY);
+            const forceReloadDone = sessionStorage.getItem(FORCE_RELOAD_KEY);
+
+            console.log('[CACHE] Versão em cache:', cachedVersion);
+            console.log('[CACHE] Versão atual:', CURRENT_VERSION);
+            console.log('[CACHE] Force reload já executado nesta sessão:', forceReloadDone);
+
+            // Se a versão mudou E ainda não fizemos reload nesta sessão
+            if (cachedVersion !== CURRENT_VERSION && !forceReloadDone) {
+                console.log('[CACHE] Nova versão detectada! Forçando hard reload...');
+
+                // Limpar todos os caches
+                if ('caches' in window) {
+                    caches.keys().then(function(names) {
+                        for (let name of names) {
+                            caches.delete(name);
+                            console.log('[CACHE] Removido cache:', name);
+                        }
+                    });
+                }
+
+                // Limpar localStorage EXCETO nossa flag
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key !== CACHE_KEY && key !== 'rodostats_force_reload_done') {
+                        keysToRemove.push(key);
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+
+                // Marcar que fizemos o reload nesta sessão
+                sessionStorage.setItem(FORCE_RELOAD_KEY, 'true');
+
+                // Atualizar versão em cache
+                localStorage.setItem(CACHE_KEY, CURRENT_VERSION);
+
+                // FORÇAR hard reload
+                console.log('[CACHE] Executando location.reload(true)...');
+                window.location.reload(true);
+
+                // Prevenir execução do resto da página
+                throw new Error('Cache reload in progress');
+            } else {
+                // Versão correta, apenas atualizar
+                localStorage.setItem(CACHE_KEY, CURRENT_VERSION);
+                console.log('[CACHE] Versão OK, continuando...');
+            }
+        })();
+    </script>
+
     {% block head %}{% endblock %}
 </head>
 <body>
