@@ -338,6 +338,7 @@ class MaintenanceRecord(db.Model):
     created_by_voice = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_archived = db.Column(db.Boolean, default=False, nullable=False)  # Soft delete
     
     # Relacionamento
     vehicle = db.relationship('Vehicle', backref=db.backref('maintenance_records', lazy=True))
@@ -923,7 +924,7 @@ def inject_cache_version():
     import time
     return {
         'cache_version': int(time.time()),  # Timestamp atual como versão
-        'app_version': '2.2.0'  # Versão da aplicação
+        'app_version': '2.2.1'  # Versão da aplicação
     }
 
 # === FUNCOES AUXILIARES ===
@@ -1672,7 +1673,7 @@ def health_check():
     import sys
     status = {
         'status': 'ok',
-        'app_version': '2.2.0',
+        'app_version': '2.2.1',
         'python_version': sys.version,
         'checks': {}
     }
@@ -2384,7 +2385,8 @@ def edit_vehicle(vehicle_id):
 @login_required
 def add_fuel():
     """Adicionar abastecimento - formulário manual"""
-    vehicles = Vehicle.query.filter_by(user_id=current_user.id).all()
+    # Buscar apenas veículos ativos (não arquivados)
+    vehicles = Vehicle.query.filter_by(user_id=current_user.id, is_archived=False).all()
     
     if request.method == 'POST':
         # Criar registro de combustível
@@ -2815,11 +2817,12 @@ def oil_delete(oil_id):
 def maintenance_list():
     """Lista todas as manutenções do usuário"""
     try:
-        # Buscar todas as manutenções do usuário
+        # Buscar apenas manutenções ATIVAS (não arquivadas)
         maintenance_records = MaintenanceRecord.query.join(Vehicle).filter(
-            Vehicle.user_id == current_user.id
+            Vehicle.user_id == current_user.id,
+            MaintenanceRecord.is_archived == False  # Filtrar arquivadas
         ).order_by(MaintenanceRecord.created_at.desc()).all()
-        
+
         # Enriquecer dados para exibição
         for record in maintenance_records:
             # Adicionar propriedades para exibição
@@ -2827,8 +2830,8 @@ def maintenance_list():
             record.type_icon = MaintenanceRecord.get_type_icon(record.maintenance_type)
             record.type_badge_class = MaintenanceRecord.get_type_badge_class(record.maintenance_type)
             record.is_pending = MaintenanceRecord.is_maintenance_due(record)
-        
-        # Calcular estatísticas
+
+        # Calcular estatísticas (apenas manutenções ativas)
         stats = {
             'total_maintenance': len(maintenance_records),
             'pending_maintenance': sum(1 for r in maintenance_records if r.is_pending),
@@ -2902,25 +2905,29 @@ def add_maintenance():
 @app.route('/maintenance/<int:maintenance_id>', methods=['DELETE'])
 @login_required
 def delete_maintenance(maintenance_id):
-    """Excluir uma manutenção"""
+    """Arquivar uma manutenção (soft delete)"""
     try:
         # Buscar a manutenção e verificar se pertence ao usuário
         maintenance = MaintenanceRecord.query.join(Vehicle).filter(
             MaintenanceRecord.id == maintenance_id,
             Vehicle.user_id == current_user.id
         ).first()
-        
+
         if not maintenance:
             return jsonify({'error': 'Manutenção não encontrada'}), 404
-        
-        db.session.delete(maintenance)
+
+        # Soft delete: marcar como arquivada ao invés de deletar
+        maintenance.is_archived = True
+        maintenance.updated_at = datetime.utcnow()
         db.session.commit()
-        
-        return jsonify({'message': 'Manutenção excluída com sucesso'}), 200
-        
+
+        print(f"[MAINTENANCE] Manutenção {maintenance_id} arquivada com sucesso", file=sys.stderr)
+        return jsonify({'message': 'Manutenção arquivada com sucesso. Ela não será mais contabilizada nos custos, mas permanece no histórico.'}), 200
+
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': f'Erro ao excluir manutenção: {str(e)}'}), 500
+        print(f"[MAINTENANCE ERROR] Erro ao arquivar manutenção: {e}", file=sys.stderr)
+        return jsonify({'error': f'Erro ao arquivar manutenção: {str(e)}'}), 500
 
 # === ROTAS DE FROTAS EMPRESARIAIS ===
 
