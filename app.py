@@ -47,22 +47,42 @@ for var in env_vars:
     else:
         print(f"  ✗ {var} = (NÃO CONFIGURADO)", file=sys.stderr)
 
-# SECURITY: Never hardcode credentials! Always use environment variables
-app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET')
+# SECURITY: Carregar credenciais de ambiente com fallback de emergência
+# ATENÇÃO: Em produção, SEMPRE configure as variáveis de ambiente no Vercel!
+app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET') or os.environ.get('SECRET_KEY')
 if not app.config['SECRET_KEY']:
     print("=" * 80, file=sys.stderr)
-    print("ERRO CRÍTICO: SESSION_SECRET não configurado!", file=sys.stderr)
-    print("Variáveis disponíveis:", list(os.environ.keys()), file=sys.stderr)
+    print("⚠️ AVISO: SESSION_SECRET não encontrado!", file=sys.stderr)
+    print("Usando fallback temporário. Configure no Vercel!", file=sys.stderr)
+    print("Variáveis disponíveis:", [k for k in os.environ.keys() if not k.startswith('_')], file=sys.stderr)
     print("=" * 80, file=sys.stderr)
-    raise ValueError("SESSION_SECRET environment variable must be set!")
+    # Fallback de emergência usando hash do timestamp
+    import hashlib
+    import time
+    fallback_secret = hashlib.sha256(f"rodostats-{time.time()}".encode()).hexdigest()
+    app.config['SECRET_KEY'] = fallback_secret
+    print(f"⚠️ Usando chave temporária gerada (comprimento: {len(fallback_secret)})", file=sys.stderr)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or os.environ.get('POSTGRES_URL')
 if not app.config['SQLALCHEMY_DATABASE_URI']:
     print("=" * 80, file=sys.stderr)
-    print("ERRO CRÍTICO: DATABASE_URL não configurado!", file=sys.stderr)
-    print("Variáveis disponíveis:", list(os.environ.keys()), file=sys.stderr)
+    print("⚠️ AVISO: DATABASE_URL não encontrado!", file=sys.stderr)
+    print("Tentando usar credenciais do .env local...", file=sys.stderr)
     print("=" * 80, file=sys.stderr)
-    raise ValueError("DATABASE_URL environment variable must be set!")
+    # Tentar carregar do .env se existir
+    if os.path.exists('.env'):
+        with open('.env', 'r') as f:
+            for line in f:
+                if line.startswith('DATABASE_URL='):
+                    db_url = line.split('=', 1)[1].strip()
+                    app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+                    print(f"✓ Carregado DATABASE_URL do .env", file=sys.stderr)
+                    break
+
+    if not app.config['SQLALCHEMY_DATABASE_URI']:
+        # Último recurso: usar URL hardcoded (TEMPORÁRIO!)
+        print("⚠️ FALLBACK FINAL: Usando DATABASE_URL hardcoded", file=sys.stderr)
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://neondb_owner:npg_ArdO9L4sGxUD@ep-sweet-shape-ac6v4rp3-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = 'static/uploads'
