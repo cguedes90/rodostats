@@ -471,26 +471,26 @@ document.getElementById('maintenance_type').addEventListener('change', function(
 
 <style>
 .gradient-text {
-    background: linear-gradient(45deg, #007bff, #28a745);
+    background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
 .bg-gradient-primary {
-    background: linear-gradient(45deg, #007bff, #0056b3);
+    background: var(--gradient-primary);
 }
 
 .bg-gradient-warning {
-    background: linear-gradient(45deg, #ffc107, #e0a800);
+    background: linear-gradient(135deg, var(--color-warning) 0%, #e0a800 100%);
 }
 
 .bg-gradient-success {
-    background: linear-gradient(45deg, #28a745, #1e7e34);
+    background: linear-gradient(135deg, var(--color-success) 0%, #00b359 100%);
 }
 
 .bg-gradient-info {
-    background: linear-gradient(45deg, #17a2b8, #117a8b);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
 }
 
 .table th {
