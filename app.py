@@ -36,22 +36,31 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# DEBUG: Mostrar quais variáveis de ambiente estão disponíveis
+import sys
+print("[DEBUG] Variáveis de ambiente disponíveis:", file=sys.stderr)
+env_vars = ['SESSION_SECRET', 'DATABASE_URL', 'GROQ_API_KEY', 'FLASK_ENV', 'VERCEL', 'VERCEL_ENV']
+for var in env_vars:
+    value = os.environ.get(var)
+    if value:
+        print(f"  ✓ {var} = {'*' * 10} (configurado, {len(value)} chars)", file=sys.stderr)
+    else:
+        print(f"  ✗ {var} = (NÃO CONFIGURADO)", file=sys.stderr)
+
 # SECURITY: Never hardcode credentials! Always use environment variables
 app.config['SECRET_KEY'] = os.environ.get('SESSION_SECRET')
 if not app.config['SECRET_KEY']:
-    import sys
     print("=" * 80, file=sys.stderr)
     print("ERRO CRÍTICO: SESSION_SECRET não configurado!", file=sys.stderr)
-    print("Configure a variável de ambiente SESSION_SECRET no Vercel", file=sys.stderr)
+    print("Variáveis disponíveis:", list(os.environ.keys()), file=sys.stderr)
     print("=" * 80, file=sys.stderr)
     raise ValueError("SESSION_SECRET environment variable must be set!")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL')
 if not app.config['SQLALCHEMY_DATABASE_URI']:
-    import sys
     print("=" * 80, file=sys.stderr)
     print("ERRO CRÍTICO: DATABASE_URL não configurado!", file=sys.stderr)
-    print("Configure a variável de ambiente DATABASE_URL no Vercel", file=sys.stderr)
+    print("Variáveis disponíveis:", list(os.environ.keys()), file=sys.stderr)
     print("=" * 80, file=sys.stderr)
     raise ValueError("DATABASE_URL environment variable must be set!")
 
