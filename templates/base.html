@@ -42,20 +42,39 @@
     <!-- Custom CSS -->
     <style>
         :root {
-            --primary-color: #4A90E2;
-            --secondary-color: #28C997;
-            --dark-bg: #1a1a1a;
-            --card-bg: #2d2d2d;
-            --text-light: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --border-color: #404040;
+            /* 🎨 Paleta Azul/Ciano Moderno - v2.3.0 */
+            --primary-color: #00d4ff;        /* Ciano elétrico - Destaque principal */
+            --secondary-color: #0099ff;      /* Azul vibrante - Secundário */
+            --accent-color: #6c5ce7;         /* Roxo suave - Acentos */
+
+            /* Backgrounds */
+            --dark-bg: #0a0e27;              /* Azul muito escuro - Background principal */
+            --card-bg: #141b3d;              /* Azul escuro - Cards */
+            --card-hover: #1a2350;           /* Azul escuro hover - Interação */
+
+            /* Textos */
+            --text-light: #e8f4f8;           /* Azul muito claro - Texto principal */
+            --text-muted: #7a8fb8;           /* Azul acinzentado - Texto secundário */
+            --text-white: #ffffff;           /* Branco puro - Títulos */
+
+            /* Bordas e divisores */
+            --border-color: #2a3a6e;         /* Azul médio - Bordas */
+            --divider-color: #1e2d5a;        /* Azul escuro - Divisores */
 
             /* Sistema de Cores Padronizado */
-            --color-success: #28a745;    /* Verde - Sucesso, OK, Ativo */
-            --color-warning: #ffc107;    /* Amarelo - Aviso, Atenção, Pendente */
-            --color-danger: #dc3545;     /* Vermelho - Erro, Crítico, Inativo */
-            --color-info: #17a2b8;       /* Azul claro - Informação */
-            --color-primary: #4A90E2;    /* Azul - Principal, Destaque */
+            --color-success: #00e676;        /* Verde neon - Sucesso, OK, Ativo */
+            --color-warning: #ffd600;        /* Amarelo vibrante - Aviso, Atenção */
+            --color-danger: #ff3d71;         /* Rosa/Vermelho - Erro, Crítico */
+            --color-info: #00d4ff;           /* Ciano - Informação */
+            --color-primary: #00d4ff;        /* Ciano - Principal */
+
+            /* Gradients modernos */
+            --gradient-primary: linear-gradient(135deg, #00d4ff 0%, #0099ff 100%);
+            --gradient-success: linear-gradient(135deg, #00e676 0%, #00c853 100%);
+            --gradient-warning: linear-gradient(135deg, #ffd600 0%, #ffa000 100%);
+            --gradient-danger: linear-gradient(135deg, #ff3d71 0%, #d32f2f 100%);
+            --gradient-purple: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+            --gradient-card: linear-gradient(135deg, #141b3d 0%, #1a2350 100%);
 
             /* Status específicos */
             --status-active: var(--color-success);
@@ -63,6 +82,12 @@
             --status-error: var(--color-danger);
             --status-pending: var(--color-warning);
             --status-completed: var(--color-success);
+
+            /* Sombras com glow ciano */
+            --shadow-sm: 0 2px 8px rgba(0, 212, 255, 0.1);
+            --shadow-md: 0 4px 16px rgba(0, 212, 255, 0.15);
+            --shadow-lg: 0 8px 32px rgba(0, 212, 255, 0.2);
+            --glow-primary: 0 0 20px rgba(0, 212, 255, 0.4);
         }
 
         * {
@@ -72,65 +97,140 @@
         }
 
         body {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            background: radial-gradient(circle at top right, #0a0e27 0%, #050816 100%);
             color: var(--text-light);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             min-height: 100vh;
+            position: relative;
+        }
+
+        /* Efeito de partículas de fundo */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(0, 153, 255, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(108, 92, 231, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
         }
 
         .navbar {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+            background: var(--gradient-primary) !important;
             backdrop-filter: blur(10px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 2px solid rgba(0, 212, 255, 0.2);
+            box-shadow: var(--shadow-md);
         }
 
         .navbar-brand {
             font-weight: bold;
             color: white !important;
+            text-shadow: var(--glow-primary);
         }
 
         .navbar-nav .nav-link {
             color: rgba(255, 255, 255, 0.9) !important;
-            transition: color 0.3s ease;
+            transition: all 0.3s ease;
+            position: relative;
         }
 
         .navbar-nav .nav-link:hover {
             color: white !important;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+
+        .navbar-nav .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) scaleX(0);
+            width: 80%;
+            height: 2px;
+            background: white;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar-nav .nav-link:hover::after {
+            transform: translateX(-50%) scaleX(1);
         }
 
         .card {
-            background: rgba(45, 45, 45, 0.8);
+            background: var(--gradient-card);
             backdrop-filter: blur(10px);
             border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-md);
             border-radius: 15px;
             transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            box-shadow: var(--shadow-lg);
         }
 
         .card-header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--gradient-primary);
             border-bottom: none;
             border-radius: 15px 15px 0 0 !important;
             color: white;
             font-weight: 600;
+            box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.1);
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--gradient-primary);
             border: none;
             border-radius: 10px;
             padding: 10px 20px;
             font-weight: 500;
             transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+            color: white;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+            box-shadow: var(--glow-primary), var(--shadow-md);
+            background: linear-gradient(135deg, #00e4ff 0%, #00a9ff 100%);
+        }
+
+        .btn-success {
+            background: var(--gradient-success);
+            border: none;
+            color: white;
+            font-weight: 500;
+        }
+
+        .btn-success:hover {
+            box-shadow: 0 0 20px rgba(0, 230, 118, 0.4);
+        }
+
+        .btn-warning {
+            background: var(--gradient-warning);
+            border: none;
+            color: #000;
+            font-weight: 600;
+        }
+
+        .btn-warning:hover {
+            box-shadow: 0 0 20px rgba(255, 214, 0, 0.4);
+        }
+
+        .btn-danger {
+            background: var(--gradient-danger);
+            border: none;
+            color: white;
+            font-weight: 500;
+        }
+
+        .btn-danger:hover {
+            box-shadow: 0 0 20px rgba(255, 61, 113, 0.4);
         }
 
         .btn-outline-light {
@@ -141,19 +241,21 @@
         .btn-outline-light:hover {
             background: var(--primary-color);
             border-color: var(--primary-color);
+            box-shadow: var(--glow-primary);
         }
 
         .form-control, .form-select {
-            background: rgba(45, 45, 45, 0.8);
+            background: var(--card-bg);
             border: 1px solid var(--border-color);
             color: var(--text-light);
             border-radius: 10px;
+            transition: all 0.3s ease;
         }
 
         .form-control:focus, .form-select:focus {
-            background: rgba(45, 45, 45, 0.9);
+            background: var(--card-hover);
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25), var(--glow-primary);
             color: var(--text-light);
         }
 
@@ -827,7 +929,7 @@
     <!-- CACHE BUSTER AGRESSIVO - v2.2.0 -->
     <script>
         (function() {
-            const CURRENT_VERSION = '2.2.1';
+            const CURRENT_VERSION = '2.3.0';
             const CACHE_KEY = 'rodostats_cached_version';
             const FORCE_RELOAD_KEY = 'rodostats_force_reload_done';
 

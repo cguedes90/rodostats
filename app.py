@@ -924,7 +924,7 @@ def inject_cache_version():
     import time
     return {
         'cache_version': int(time.time()),  # Timestamp atual como versão
-        'app_version': '2.2.1'  # Versão da aplicação
+        'app_version': '2.3.0'  # Versão da aplicação
     }
 
 # === FUNCOES AUXILIARES ===
@@ -1673,7 +1673,7 @@ def health_check():
     import sys
     status = {
         'status': 'ok',
-        'app_version': '2.2.1',
+        'app_version': '2.3.0',
         'python_version': sys.version,
         'checks': {}
     }
