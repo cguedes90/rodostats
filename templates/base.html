@@ -924,12 +924,126 @@
             border-color: #ffc107 !important;
             color: #ffc107 !important;
         }
+
+        /* ========================================
+           BOTTOM NAVIGATION BAR - MOBILE STYLE
+           ======================================== */
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--gradient-card);
+            backdrop-filter: blur(20px);
+            border-top: 2px solid var(--border-color);
+            box-shadow: 0 -4px 20px rgba(0, 212, 255, 0.1);
+            z-index: 1030;
+            padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+            display: none; /* Mostrar apenas quando autenticado */
+        }
+
+        .bottom-nav.show {
+            display: block;
+        }
+
+        .bottom-nav-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 0 8px;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            color: var(--text-muted);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 8px 12px;
+            border-radius: 12px;
+            position: relative;
+            min-width: 60px;
+            flex: 1;
+            max-width: 80px;
+        }
+
+        .bottom-nav-item i {
+            font-size: 22px;
+            margin-bottom: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .bottom-nav-item span {
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .bottom-nav-item:hover {
+            color: var(--primary-color);
+            transform: translateY(-2px);
+        }
+
+        .bottom-nav-item.active {
+            color: var(--primary-color);
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .bottom-nav-item.active i {
+            transform: scale(1.1);
+            filter: drop-shadow(0 0 8px var(--primary-color));
+        }
+
+        .bottom-nav-item.active::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 3px;
+            background: var(--gradient-primary);
+            border-radius: 0 0 3px 3px;
+            box-shadow: var(--glow-primary);
+        }
+
+        /* Ocultar navbar superior em telas pequenas */
+        @media (max-width: 991px) {
+            .navbar .navbar-collapse {
+                display: none !important;
+            }
+
+            .navbar-toggler {
+                display: none !important;
+            }
+
+            .bottom-nav.show {
+                display: block;
+            }
+
+            /* Adicionar padding no body para não sobrepor o bottom nav */
+            body {
+                padding-bottom: 70px;
+            }
+        }
+
+        /* Em desktop, manter navbar normal */
+        @media (min-width: 992px) {
+            .bottom-nav {
+                display: none !important;
+            }
+        }
     </style>
 
     <!-- CACHE BUSTER AGRESSIVO - v2.2.0 -->
     <script>
         (function() {
-            const CURRENT_VERSION = '2.3.0';
+            const CURRENT_VERSION = '2.4.0';
             const CACHE_KEY = 'rodostats_cached_version';
             const FORCE_RELOAD_KEY = 'rodostats_force_reload_done';
 
@@ -1196,7 +1310,58 @@
             setTimeout(hideSplashScreen, 1000);
         }
     </script>
-    
+
+    <!-- Bottom Navigation Bar (Mobile) -->
+    {% if current_user.is_authenticated %}
+    <nav class="bottom-nav show">
+        <div class="bottom-nav-container">
+            <a href="{{ url_for('dashboard') }}" class="bottom-nav-item" data-page="dashboard">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="{{ url_for('vehicles') }}" class="bottom-nav-item" data-page="vehicles">
+                <i class="fas fa-car"></i>
+                <span>Garagem</span>
+            </a>
+            <a href="{{ url_for('add_fuel') }}" class="bottom-nav-item" data-page="add_fuel">
+                <i class="fas fa-gas-pump"></i>
+                <span>Abastecer</span>
+            </a>
+            <a href="{{ url_for('analytics') }}" class="bottom-nav-item" data-page="analytics">
+                <i class="fas fa-chart-bar"></i>
+                <span>Análises</span>
+            </a>
+            <a href="{{ url_for('maintenance_list') }}" class="bottom-nav-item" data-page="maintenance">
+                <i class="fas fa-tools"></i>
+                <span>Manutenção</span>
+            </a>
+        </div>
+    </nav>
+
+    <script>
+        // Marcar item ativo no bottom nav baseado na URL atual
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+
+            bottomNavItems.forEach(item => {
+                const itemHref = item.getAttribute('href');
+
+                // Marcar como ativo se a URL atual corresponde
+                if (currentPath === itemHref ||
+                    (itemHref !== '/' && currentPath.startsWith(itemHref))) {
+                    item.classList.add('active');
+                }
+
+                // Se estiver no dashboard root, marcar o home
+                if (currentPath === '/' || currentPath === '/dashboard') {
+                    document.querySelector('[data-page="dashboard"]').classList.add('active');
+                }
+            });
+        });
+    </script>
+    {% endif %}
+
     {% block scripts %}{% endblock %}
 </body>
 </html>
