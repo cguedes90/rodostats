@@ -571,12 +571,21 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAIInsights();
     checkVoiceSupport();
 
-    // Mostrar notificação de nova versão
+    // Mostrar notificação de nova versão E FORÇAR RELOAD
     const lastVersion = localStorage.getItem('app_version');
     const currentVersion = '{{ app_version }}';
 
     if (lastVersion && lastVersion !== currentVersion) {
-        // Nova versão detectada!
+        // Nova versão detectada! Forçar reload do cache
+        console.log('[CACHE] Nova versão detectada:', lastVersion, '->', currentVersion);
+
+        // Limpar service worker cache se existir
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => caches.delete(name));
+            });
+        }
+
         setTimeout(() => {
             Swal.fire({
                 icon: 'success',
@@ -592,14 +601,31 @@ document.addEventListener('DOMContentLoaded', function() {
                             <li>🔗 <strong>Atalhos:</strong> Links diretos para ações</li>
                             <li>🧪 <strong>Testes:</strong> 11 testes automatizados</li>
                         </ul>
+                        <p class="text-muted small mt-2">A página será recarregada para aplicar as mudanças...</p>
                     </div>
                 `,
-                confirmButtonText: 'Ótimo!',
-                timer: 8000,
+                confirmButtonText: 'Recarregar Agora',
+                timer: 5000,
                 timerProgressBar: true,
-                width: '600px'
+                width: '600px',
+                willClose: () => {
+                    // Forçar hard reload ao fechar o alerta
+                    window.location.reload(true);
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.reload(true);
+                }
             });
         }, 1000);
+    } else if (!lastVersion) {
+        // Primeira visita - forçar reload limpo
+        console.log('[CACHE] Primeira visita detectada, limpando cache...');
+        if ('caches' in window) {
+            caches.keys().then(names => {
+                names.forEach(name => caches.delete(name));
+            });
+        }
     }
 
     // Salvar versão atual
