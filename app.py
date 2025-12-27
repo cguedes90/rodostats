@@ -1666,6 +1666,64 @@ def service_worker():
     except:
         return '', 404
 
+@app.route('/health')
+def health_check():
+    """Endpoint de diagnóstico do sistema"""
+    import sys
+    status = {
+        'status': 'ok',
+        'app_version': '2.1.1',
+        'python_version': sys.version,
+        'checks': {}
+    }
+
+    # Teste 1: Variáveis de Ambiente
+    status['checks']['env_vars'] = {
+        'SESSION_SECRET': '✓' if os.environ.get('SESSION_SECRET') or app.config.get('SECRET_KEY') else '✗',
+        'DATABASE_URL': '✓' if app.config.get('SQLALCHEMY_DATABASE_URI') else '✗',
+        'GROQ_API_KEY': '✓' if os.environ.get('GROQ_API_KEY') else '✗',
+    }
+
+    # Teste 2: Conexão com Banco de Dados
+    try:
+        db.session.execute('SELECT 1')
+        status['checks']['database'] = '✓ Conectado'
+    except Exception as e:
+        status['checks']['database'] = f'✗ Erro: {str(e)}'
+        status['status'] = 'degraded'
+
+    # Teste 3: Tabelas do Banco
+    try:
+        user_count = User.query.count()
+        status['checks']['tables'] = f'✓ OK ({user_count} usuários)'
+    except Exception as e:
+        status['checks']['tables'] = f'✗ Erro: {str(e)}'
+        status['status'] = 'degraded'
+
+    # Formatar resposta
+    html = f"""
+    <html>
+    <head><title>Health Check - RodoStats</title></head>
+    <body style="font-family: monospace; padding: 20px; background: #1a1a1a; color: #e0e0e0;">
+        <h1>🏥 Health Check - RodoStats v{status['app_version']}</h1>
+        <h2>Status Geral: {status['status'].upper()}</h2>
+        <h3>Verificações:</h3>
+        <ul>
+            <li><strong>Variáveis de Ambiente:</strong>
+                <ul>
+                    {''.join([f"<li>{k}: {v}</li>" for k, v in status['checks']['env_vars'].items()])}
+                </ul>
+            </li>
+            <li><strong>Banco de Dados:</strong> {status['checks'].get('database', '?')}</li>
+            <li><strong>Tabelas:</strong> {status['checks'].get('tables', '?')}</li>
+        </ul>
+        <hr>
+        <p><small>Python: {sys.version}</small></p>
+    </body>
+    </html>
+    """
+    return html, 200 if status['status'] == 'ok' else 503
+
 @app.route('/test-login')
 def test_login():
     """Rota de teste para verificar login"""
@@ -1678,56 +1736,74 @@ def test_login():
 def login():
     """Login do usuario"""
     if request.method == 'POST':
-        # Aceitar tanto username quanto email
-        login_field = request.form.get('username') or request.form.get('email')
-        password = request.form['password']
+        try:
+            # Aceitar tanto username quanto email
+            login_field = request.form.get('username') or request.form.get('email')
+            password = request.form.get('password', '')
 
-        print(f"[LOGIN] Tentativa de login: {login_field}")
+            print(f"[LOGIN] Tentativa de login: {login_field}", file=sys.stderr)
 
-        # Buscar por username ou email
-        user = User.query.filter(
-            (User.username == login_field) | (User.email == login_field)
-        ).first()
-        
-        if user and user.check_password(password):
-            print(f"[LOGIN] Credenciais válidas para {login_field}")
-            session.permanent = True
-            login_user(user, remember=True)
-            print(f"[LOGIN] Usuário logado: {current_user.is_authenticated}")
+            # Testar conexão com o banco
+            try:
+                # Buscar por username ou email
+                user = User.query.filter(
+                    (User.username == login_field) | (User.email == login_field)
+                ).first()
+            except Exception as db_error:
+                print(f"[LOGIN ERROR] Erro ao consultar banco: {db_error}", file=sys.stderr)
+                print(f"[LOGIN ERROR] Traceback: {traceback.format_exc()}", file=sys.stderr)
+                flash('Erro ao conectar com o banco de dados. Tente novamente.', 'error')
+                return render_template('login.html')
 
-            # Verificar se há convite pendente
-            invite_token = request.args.get('invite_token')
-            if invite_token:
-                return redirect(url_for('accept_fleet_invite', token=invite_token))
+            if user and user.check_password(password):
+                print(f"[LOGIN] Credenciais válidas para {login_field}", file=sys.stderr)
+                session.permanent = True
+                login_user(user, remember=True)
+                print(f"[LOGIN] Usuário logado: {current_user.is_authenticated}", file=sys.stderr)
 
-            # Redirecionamento inteligente baseado no tipo de usuário
-            next_page = request.args.get('next')
-            if next_page:
-                return redirect(next_page)
+                # Verificar se há convite pendente
+                invite_token = request.args.get('invite_token')
+                if invite_token:
+                    return redirect(url_for('accept_fleet_invite', token=invite_token))
 
-            # 1. Super Admin → Dashboard Administrativo
-            if user.is_super_admin():
-                print(f"[LOGIN] Usuário {login_field} é super admin, redirecionando para admin_dashboard")
-                return redirect(url_for('admin_dashboard'))
+                # Redirecionamento inteligente baseado no tipo de usuário
+                next_page = request.args.get('next')
+                if next_page:
+                    return redirect(next_page)
 
-            # 2. Verificar se usuário pertence a uma frota
-            fleet_membership = FleetMember.query.filter_by(
-                user_id=user.id,
-                is_active=True
-            ).first()
+                try:
+                    # 1. Super Admin → Dashboard Administrativo
+                    if user.is_super_admin():
+                        print(f"[LOGIN] Usuário {login_field} é super admin, redirecionando para admin_dashboard", file=sys.stderr)
+                        return redirect(url_for('admin_dashboard'))
 
-            if fleet_membership:
-                # Usuário de frota → redirecionar para dashboard empresarial
-                print(f"[LOGIN] Usuário {login_field} é membro de frota, redirecionando para fleet_dashboard")
-                return redirect(url_for('fleet_dashboard'))
+                    # 2. Verificar se usuário pertence a uma frota
+                    fleet_membership = FleetMember.query.filter_by(
+                        user_id=user.id,
+                        is_active=True
+                    ).first()
+
+                    if fleet_membership:
+                        # Usuário de frota → redirecionar para dashboard empresarial
+                        print(f"[LOGIN] Usuário {login_field} é membro de frota, redirecionando para fleet_dashboard", file=sys.stderr)
+                        return redirect(url_for('fleet_dashboard'))
+                    else:
+                        # 3. Usuário PF → redirecionar para dashboard individual
+                        print(f"[LOGIN] Usuário {login_field} é PF, redirecionando para dashboard", file=sys.stderr)
+                        return redirect(url_for('dashboard'))
+                except Exception as redirect_error:
+                    # Se houver erro ao verificar frota, redirecionar para dashboard padrão
+                    print(f"[LOGIN WARNING] Erro ao verificar frota: {redirect_error}", file=sys.stderr)
+                    return redirect(url_for('dashboard'))
             else:
-                # 3. Usuário PF → redirecionar para dashboard individual
-                print(f"[LOGIN] Usuário {login_field} é PF, redirecionando para dashboard")
-                return redirect(url_for('dashboard'))
-        else:
-            print(f"[LOGIN] Credenciais inválidas para {login_field}")
-            flash('Usuario ou senha incorretos', 'error')
-    
+                print(f"[LOGIN] Credenciais inválidas para {login_field}", file=sys.stderr)
+                flash('Usuario ou senha incorretos', 'error')
+
+        except Exception as e:
+            print(f"[LOGIN CRITICAL] Erro inesperado: {e}", file=sys.stderr)
+            print(f"[LOGIN CRITICAL] Traceback: {traceback.format_exc()}", file=sys.stderr)
+            flash('Erro ao processar login. Tente novamente.', 'error')
+
     return render_template('login.html')
 
 @app.route('/register', methods=['GET', 'POST'])
